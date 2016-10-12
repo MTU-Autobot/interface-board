@@ -6452,7 +6452,7 @@ Please make sure your boards conform to these design rules.</description>
 <attribute name="OC_FARNELL" value="unknown" x="64.77" y="5.715" size="1.778" layer="27" rot="R180" display="off"/>
 <attribute name="OC_NEWARK" value="unknown" x="64.77" y="5.715" size="1.778" layer="27" rot="R180" display="off"/>
 <attribute name="MF" value="" x="64.77" y="5.715" size="1.778" layer="27" rot="R180" display="off"/>
-<attribute name="NAME" x="71.27875" y="14.605" size="1.27" layer="25" font="vector" ratio="10" rot="R270"/>
+<attribute name="NAME" x="71.27875" y="14.605" size="1.27" layer="25" font="vector" rot="R270"/>
 <attribute name="VALUE" x="55.5625" y="11.43" size="0.8128" layer="27" ratio="10" rot="R270"/>
 </element>
 <element name="X2" library="con-molex" package="70553-05" value="ENCODER2" x="48.26" y="5.715" smashed="yes" rot="R180">
@@ -6460,7 +6460,7 @@ Please make sure your boards conform to these design rules.</description>
 <attribute name="OC_FARNELL" value="unknown" x="48.26" y="5.715" size="1.778" layer="27" rot="R180" display="off"/>
 <attribute name="OC_NEWARK" value="unknown" x="48.26" y="5.715" size="1.778" layer="27" rot="R180" display="off"/>
 <attribute name="MF" value="" x="48.26" y="5.715" size="1.778" layer="27" rot="R180" display="off"/>
-<attribute name="NAME" x="54.76875" y="14.605" size="1.27" layer="25" font="vector" ratio="10" rot="R270"/>
+<attribute name="NAME" x="54.76875" y="14.605" size="1.27" layer="25" font="vector" rot="R270"/>
 <attribute name="VALUE" x="39.0525" y="11.43" size="0.8128" layer="27" ratio="10" rot="R270"/>
 </element>
 <element name="X3" library="con-amphenol" package="10118192" value="MICROB" x="1.508125" y="24.13" smashed="yes" rot="R270">
@@ -6478,7 +6478,7 @@ Please make sure your boards conform to these design rules.</description>
 <attribute name="OC_FARNELL" value="unknown" x="74.295" y="24.13" size="1.778" layer="27" rot="R270" display="off"/>
 <attribute name="OC_NEWARK" value="unknown" x="74.295" y="24.13" size="1.778" layer="27" rot="R270" display="off"/>
 <attribute name="MF" value="" x="74.295" y="24.13" size="1.778" layer="27" rot="R270" display="off"/>
-<attribute name="NAME" x="67.945" y="29.5275" size="1.27" layer="25" font="vector" ratio="10" rot="R90"/>
+<attribute name="NAME" x="67.945" y="29.5275" size="1.27" layer="25" font="vector" rot="R90"/>
 <attribute name="VALUE" x="68.58" y="16.1925" size="0.8128" layer="27" ratio="10"/>
 </element>
 <element name="U$1" library="holes" package="3,0" value="" x="3.33375" y="3.33375" smashed="yes"/>
@@ -6737,7 +6737,7 @@ Please make sure your boards conform to these design rules.</description>
 <wire x1="15.875" y1="21.59" x2="17.145" y2="20.32" width="0.6096" layer="16"/>
 <wire x1="27.94" y1="20.32" x2="25.4" y2="20.32" width="0.6096" layer="16"/>
 <wire x1="25.4" y1="20.32" x2="17.145" y2="20.32" width="0.6096" layer="16"/>
-<via x="31.75" y="14.76375" extent="1-16" drill="0.4064"/>
+<via x="31.75" y="14.76375" extent="1-16" drill="0.381"/>
 <wire x1="31.75" y1="14.76375" x2="28.73375" y2="14.76375" width="0.6096" layer="16"/>
 <wire x1="28.73375" y1="14.76375" x2="25.4" y2="18.0975" width="0.6096" layer="16"/>
 <wire x1="25.4" y1="18.0975" x2="25.4" y2="20.32" width="0.6096" layer="16"/>
