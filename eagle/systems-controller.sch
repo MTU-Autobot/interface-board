@@ -6,7 +6,7 @@
 <setting alwaysvectorfont="no"/>
 <setting verticaltext="up"/>
 </settings>
-<grid distance="0.1" unitdist="inch" unit="inch" style="lines" multiple="1" display="yes" altdistance="0.01" altunitdist="inch" altunit="inch"/>
+<grid distance="0.1" unitdist="inch" unit="inch" style="lines" multiple="1" display="no" altdistance="0.01" altunitdist="inch" altunit="inch"/>
 <layers>
 <layer number="1" name="Top" color="4" fill="10" visible="no" active="no"/>
 <layer number="2" name="Route2" color="1" fill="3" visible="no" active="no"/>
@@ -12245,8 +12245,6 @@ Source: www.kingbright.com</description>
 <part name="J5" library="SparkFun-Connectors" deviceset="M03" device="PTH"/>
 <part name="GND22" library="supply1" deviceset="GND" device=""/>
 <part name="GND23" library="supply1" deviceset="GND" device=""/>
-<part name="P+6" library="supply1" deviceset="+5V" device=""/>
-<part name="P+7" library="supply1" deviceset="+5V" device=""/>
 </parts>
 <sheets>
 <sheet>
@@ -12981,8 +12979,6 @@ Source: www.kingbright.com</description>
 <instance part="J5" gate="J$1" x="180.34" y="76.2"/>
 <instance part="GND22" gate="1" x="165.1" y="68.58"/>
 <instance part="GND23" gate="1" x="190.5" y="68.58"/>
-<instance part="P+6" gate="1" x="165.1" y="83.82"/>
-<instance part="P+7" gate="1" x="190.5" y="83.82"/>
 </instances>
 <busses>
 </busses>
@@ -13093,18 +13089,6 @@ Source: www.kingbright.com</description>
 <pinref part="P+5" gate="1" pin="+5V"/>
 <wire x1="172.72" y1="45.72" x2="170.18" y2="45.72" width="0.1524" layer="91"/>
 <wire x1="170.18" y1="45.72" x2="170.18" y2="50.8" width="0.1524" layer="91"/>
-</segment>
-<segment>
-<pinref part="J4" gate="J$1" pin="2"/>
-<pinref part="P+6" gate="1" pin="+5V"/>
-<wire x1="162.56" y1="76.2" x2="165.1" y2="76.2" width="0.1524" layer="91"/>
-<wire x1="165.1" y1="76.2" x2="165.1" y2="81.28" width="0.1524" layer="91"/>
-</segment>
-<segment>
-<pinref part="P+7" gate="1" pin="+5V"/>
-<pinref part="J5" gate="J$1" pin="2"/>
-<wire x1="187.96" y1="76.2" x2="190.5" y2="76.2" width="0.1524" layer="91"/>
-<wire x1="190.5" y1="76.2" x2="190.5" y2="81.28" width="0.1524" layer="91"/>
 </segment>
 </net>
 <net name="CH1" class="0">
