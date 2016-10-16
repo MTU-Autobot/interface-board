@@ -1,7 +1,8 @@
-#include <kinetis.h>
 #include <stdio.h>
 #include <string.h>
+#include "kinetis.h"
 #include "uart.h"
+#include "rc.h"
 
 volatile uint32_t micross = 0;
 
@@ -55,10 +56,6 @@ int main(){
     GPIOC_PDDR |= 0x20;
     GPIOC_PDOR |= 0x20;
 
-    // enable interrupt on both edges, gpio
-    PORTD_PCR0 = PORT_PCR_IRQC(11) | PORT_PCR_MUX(1);
-    PORTD_PCR1 = PORT_PCR_IRQC(11) | PORT_PCR_MUX(1);
-
     // encoder pin setup
     PORTA_PCR12 = PORT_PCR_MUX(7) | PORT_PCR_PFE | PORT_PCR_PE;
     PORTA_PCR13 = PORT_PCR_MUX(7) | PORT_PCR_PFE | PORT_PCR_PE;
@@ -109,6 +106,11 @@ int main(){
             //sprintf(printBuf, "count: %d\n", ch1pw);
             //uartPrint(printBuf);
             //print("hello world!\r\n");
+        }
+
+        uint16_t bytes = serialRead(readBuf, 32, '\n');
+        if(bytes){
+            serialPrint(readBuf);
         }
     }
 }

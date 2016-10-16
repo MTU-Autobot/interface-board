@@ -1,6 +1,6 @@
 /*
  * uart.h
- * function prptotypes for uart
+ * function prototypes for uart
  */
 
 #ifndef UART_H_
