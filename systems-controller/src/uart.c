@@ -3,57 +3,41 @@
  * UART initialization and related functions
  */
 
-#include "kinetis.h"
+#include <string.h>
+#include <usb_serial.h>
 #include "uart.h"
 
-// uart initialization
-void uartInit(uint32_t baudrate){
-    // get divisor
-    uint32_t divisor = BAUD2DIV(baudrate);
-
-    SIM_SCGC4 |= SIM_SCGC4_UART0;
-
-    // PORTB16 = UART0_RX, PORTB17 = UART0_TX
-    PORTB_PCR16 |= PORT_PCR_MUX(3);
-    PORTB_PCR17 |= PORT_PCR_MUX(3);
-    // TX as output, RX as input
-    GPIOB_PDDR |= 0x20000;
-    GPIOB_PDDR &= ~(0x10000);
-
-    // set baud rate registers
-    UART0_BDH = (divisor >> 13) & 0x1F;
-    UART0_BDL = (divisor >> 5) & 0xFF;
-    UART0_C4 = divisor & 0x1F;
-
-    // some fifo stuff?
-    //UART0_C1 = UART_C1_ILT;
-    //UART0_TWFIFO = 0;
-    //UART0_RWFIFO = 4;
-    //UART0_PFIFO = UART_PFIFO_TXFE | UART_PFIFO_RXFE;
-
-    // activate tx and rx
-    UART0_C2 = 0x0C;
+// print out a string
+void serialPrint(const char * str){
+    usb_serial_write((const uint8_t *)str, strlen(str));
 }
 
-// function to send a character
-void uartSendChar(char data){
-    while(!(UART0_S1 & UART_S1_TDRE));
-    UART0_D = data;
-}
+// read data until we hit the stop character, function blocks until complete,
+// returns the number of bytes read into the buffer
+uint16_t serialRead(char * buffer, uint16_t size, char stopChar){
+    if(usb_serial_available() > 0){
+        // clear buffer
+        memset(buffer, 0, size);
+        uint16_t index = 0;
 
-// fucntion to get a char
-char uartGetChar(void){
-    char data = 0;
-    while(!(UART0_S1 & UART_S1_RDRF));
-    data = UART0_D;
-    return data;
-}
+        uint8_t c = usb_serial_getchar();
 
-// function to send a string
-void uartPrint(const char * data){
-    uint16_t i = 0;
-    while(data[i] != '\0'){
-        uartSendChar(data[i]);
-        i++;
+        // block until we get a newline
+        while(c != stopChar){
+            while(usb_serial_available() > 0){
+                buffer[index] = c;
+
+                // make sure we dont overrun the buffer
+                if(index < size - 1){
+                    index++;
+                }else{
+                    return index;
+                }
+
+                c = usb_serial_getchar();
+            }
+        }
+        return index;
     }
+    return 0;
 }

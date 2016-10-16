@@ -1,6 +1,7 @@
-#include "kinetis.h"
-#include "uart.h"
+#include <kinetis.h>
 #include <stdio.h>
+#include <string.h>
+#include "uart.h"
 
 volatile uint32_t micross = 0;
 
@@ -45,8 +46,8 @@ void portd_isr(void){
 
 
 int main(){
-    uartInit(115200);
-    uartPrint("test1\n");
+    //uartInit(115200);
+    //uartPrint("test1\n");
 
     // PORTC_PCR5 0xxx x001 x100 x000
     // Pin Mux Control (10-8)=0x001, Drive Strength Enable (6)=1
@@ -97,15 +98,17 @@ int main(){
     NVIC_ENABLE_IRQ(IRQ_PORTD);
     NVIC_ENABLE_IRQ(IRQ_FTM1);
 
-    uartPrint("test2\n");
+    //uartPrint("test2\n");
 
     while(1){
         char printBuf[32] = "";
+        static char readBuf[32] = "";
 
-        if(micross % 50000 <= 100){
+        if(micross % 1000000 == 0){
             //sprintf(printBuf, "ch1: %d\nch2: %d\n\n", ch1pw, ch2pw);
-            sprintf(printBuf, "count: %d\n", ch1pw);
-            uartPrint(printBuf);
+            //sprintf(printBuf, "count: %d\n", ch1pw);
+            //uartPrint(printBuf);
+            //print("hello world!\r\n");
         }
     }
 }
