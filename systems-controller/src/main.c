@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "kinetis.h"
-#include "uart.h"
+#include "serial.h"
 #include "rc.h"
 
 volatile uint32_t micross = 0;

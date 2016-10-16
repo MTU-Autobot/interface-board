@@ -1,10 +1,10 @@
 /*
- * uart.h
- * function prototypes for uart
+ * serial.h
+ * function prototypes for serial
  */
 
-#ifndef UART_H_
-#define UART_H_
+#ifndef SERIAL_H_
+#define SERIAL_H_
 
 void serialPrint(const char * str);
 uint16_t serialRead(char * buffer, uint16_t size, char stopChar);

@@ -1,11 +1,11 @@
 /*
- * uart.c
+ * serial.c
  * UART initialization and related functions
  */
 
 #include <string.h>
 #include <usb_serial.h>
-#include "uart.h"
+#include "serial.h"
 
 // print out a string
 void serialPrint(const char * str){
