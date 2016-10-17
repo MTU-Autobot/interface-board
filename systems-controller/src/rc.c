@@ -3,7 +3,7 @@
  * RC controller init and functions
  */
 
- #include "kinetis.h"
+#include "kinetis.h"
 
 void rcInit(void){
     // enable interrupt on both edges, gpio
