@@ -11,6 +11,10 @@ volatile uint32_t ch1rise = 0;
 volatile uint32_t ch1pw = 0;
 volatile uint32_t ch2rise = 0;
 volatile uint32_t ch2pw = 0;
+volatile uint32_t ch3rise = 0;
+volatile uint32_t ch3pw = 0;
+volatile uint32_t ch4rise = 0;
+volatile uint32_t ch4pw = 0;
 
 void pit0_isr(void){
     // clear interrupt flag
@@ -34,7 +38,7 @@ void portd_isr(void){
         }else{
             ch1pw = micross - ch1rise;
         }
-    }else{
+    }else if(PORTD_PCR1 & PORT_PCR_ISF){
         // if not PD0, then PD1
         PORTD_PCR1 |= PORT_PCR_ISF;
         // get pulse width
@@ -43,14 +47,27 @@ void portd_isr(void){
         }else{
             ch2pw = micross - ch2rise;
         }
+    }else if(PORTD_PCR2 & PORT_PCR_ISF){
+        PORTD_PCR2 |= PORT_PCR_ISF;
+        // get pulse width
+        if(GPIOD_PDIR & 0x04){
+            ch3rise = micross;
+        }else{
+            ch3pw = micross - ch3rise;
+        }
+    }else if(PORTD_PCR3 & PORT_PCR_ISF){
+        PORTD_PCR3 |= PORT_PCR_ISF;
+        // get pulse width
+        if(GPIOD_PDIR & 0x08){
+            ch4rise = micross;
+        }else{
+            ch4pw = micross - ch4rise;
+        }
     }
 }
 
 
 int main(){
-    //uartInit(115200);
-    //uartPrint("test1\n");
-
     // PORTC_PCR5 0xxx x001 x100 x000
     // Pin Mux Control (10-8)=0x001, Drive Strength Enable (6)=1
     PORTC_PCR5 = PORT_PCR_MUX(1) | PORT_PCR_DSE;
@@ -96,26 +113,10 @@ int main(){
     NVIC_ENABLE_IRQ(IRQ_PORTD);
     NVIC_ENABLE_IRQ(IRQ_FTM1);
 
-    //uartPrint("test2\n");
     pwmInit();
-    pwmSetPeriod(PWM1, PWM_PERIOD/4);
+    pwmSetPeriod(PWM1, 2250);
+    pwmSetPeriod(PWM2, 4500);
 
     while(1){
-        char printBuf[32] = "";
-        static char readBuf[32] = "";
-        //FTM0_C0V = 22500;
-        if(micross % 1000000 == 0){
-            //sprintf(printBuf, "ch1: %d\nch2: %d\n\n", ch1pw, ch2pw);
-            //sprintf(printBuf, "count: %d\n", ch1pw);
-            //uartPrint(printBuf);
-            //print("hello world!\r\n");
-            sprintf(printBuf, "FTM0_C0V: %x\n", (int)FTM0_C0V);
-            serialPrint(printBuf);
-        }
-
-        uint16_t bytes = serialRead(readBuf, 32, '\n');
-        if(bytes){
-            serialPrint(readBuf);
-        }
     }
 }

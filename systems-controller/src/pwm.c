@@ -12,6 +12,8 @@ void pwmInit(void){
     FTM0_MODE = FTM_MODE_WPDIS | FTM_MODE_FTMEN;
 
     // set clock to system clock and divide by 32, set MOD to 44999 for 50Hz
+    // "system clock" actually refers to the bus clock for the FTMs, which is
+    // the actual system clock divided by 2. freescale pls
     FTM0_SC = 0;
     FTM0_MOD = PWM_PERIOD;
     FTM0_SC = FTM_SC_CLKS(1) | FTM_SC_PS(4);
