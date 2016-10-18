@@ -3,6 +3,7 @@
 #include "kinetis.h"
 #include "serial.h"
 #include "rc.h"
+#include "pwm.h"
 
 volatile uint32_t micross = 0;
 
@@ -96,16 +97,20 @@ int main(){
     NVIC_ENABLE_IRQ(IRQ_FTM1);
 
     //uartPrint("test2\n");
+    pwmInit();
+    pwmSetPeriod(PWM1, PWM_PERIOD/4);
 
     while(1){
         char printBuf[32] = "";
         static char readBuf[32] = "";
-
+        //FTM0_C0V = 22500;
         if(micross % 1000000 == 0){
             //sprintf(printBuf, "ch1: %d\nch2: %d\n\n", ch1pw, ch2pw);
             //sprintf(printBuf, "count: %d\n", ch1pw);
             //uartPrint(printBuf);
             //print("hello world!\r\n");
+            sprintf(printBuf, "FTM0_C0V: %x\n", (int)FTM0_C0V);
+            serialPrint(printBuf);
         }
 
         uint16_t bytes = serialRead(readBuf, 32, '\n');
