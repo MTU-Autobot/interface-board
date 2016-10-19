@@ -84,7 +84,7 @@ void QuadDecode<N>::setup(){
     FTM_C0SC=0x10;	    // Bit 4 Channel Mode
     FTM_C0V= COMP_LOW;	    // Initial Compare Interrupt Value
 
-    FTM_QDCTRL=0b1100 0001;	    // Quadrature control
+    FTM_QDCTRL=0xC1;	    // Quadrature control
     //        Filter enabled, QUADEN set
 
     // Write Protect Enable
@@ -315,7 +315,7 @@ int32_t QuadDecode<N>::calcPosn(void){
     };
     // TOF Interrupt enabled
     interrupts();   // Allow TOF interrupt if pending
-    count16=FTM_CNT;    // Read current counter 
+    count16=FTM_CNT;    // Read current counter
     count32=count16;
     cpBasePosn=v_basePosn;  // Unchanging copy
     dataConsistent=(FTM_SC & TOIE);  // Still TOIE, no TOF

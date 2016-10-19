@@ -15,4 +15,7 @@ void rcInit(void){
     PORTD_PCR5 = PORT_PCR_IRQC(11) | PORT_PCR_MUX(1);
     PORTD_PCR6 = PORT_PCR_IRQC(11) | PORT_PCR_MUX(1);
     PORTD_PCR7 = PORT_PCR_IRQC(11) | PORT_PCR_MUX(1);
+
+    // enable interrupt for portd
+    NVIC_ENABLE_IRQ(IRQ_PORTD);
 }
