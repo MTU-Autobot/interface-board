@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 #include "QuadDecode_def.h"
 
 extern "C" {
@@ -11,6 +12,7 @@ extern "C" {
 
 volatile uint32_t micross = 0;
 
+// variables for rc receiver
 volatile uint32_t ch1rise = 0;
 volatile uint32_t ch1pw = 0;
 volatile uint32_t ch2rise = 0;
@@ -20,10 +22,32 @@ volatile uint32_t ch3pw = 0;
 volatile uint32_t ch4rise = 0;
 volatile uint32_t ch4pw = 0;
 
+// encoder variables
+int32_t enc1Pos = 0;
+int32_t enc2Pos = 0;
+volatile int32_t lastEnc1Pos = 0;
+volatile int32_t lastEnc2Pos = 0;
+volatile float rightRPM = 0;
+volatile float leftRPM = 0;
+
+// speed calculation stuff
+float rpm2speed = (29 * PI * 60) / (12 * 5280);
+
 void pit0_isr(void){
     // clear interrupt flag
     PIT_TFLG0 = 0x01;
     micross++;
+}
+
+void pit1_isr(void){
+    //clear flag
+    PIT_TFLG1 = 0x01;
+
+    rightRPM = (((float)(enc1Pos - lastEnc1Pos) * 1000 * 15.0) / 512.0) / 20.0;
+    leftRPM = (((float)(enc2Pos - lastEnc2Pos) * 1000 * 15.0) / 512.0) / 20.0;
+
+    lastEnc1Pos = enc1Pos;
+    lastEnc2Pos = enc2Pos;
 }
 
 // create two encoder objects
@@ -85,9 +109,13 @@ int main(){
     PIT_LDVAL0 = 0x23;
     // enable interrupt
     PIT_TCTRL0 = 0x03;
+    // 1ms period
+    PIT_LDVAL1 = 0x8C9F;
+    PIT_TCTRL1 = 0x03;
 
     // enable PIT and PORT and FTM interrupts
     NVIC_ENABLE_IRQ(IRQ_PIT_CH0);
+    NVIC_ENABLE_IRQ(IRQ_PIT_CH1);
 
     // start pwm and set both outputs to 1ms
     pwmInit();
@@ -102,14 +130,27 @@ int main(){
     enc1.zeroFTM();
     enc2.zeroFTM();
 
-    while(1){
-        char printBuf[32] = "";
-        //int32_t enc1Pos = enc1.calcPosn();
-        int32_t enc2Pos = enc2.calcPosn();
+    char printBuf[32] = "";
+    uint32_t currTime = 0;
+    uint32_t prevTime = 0;
 
-        if(micross % 5000 <= 10){
-            sprintf(printBuf, "enc1Pos: %d\nenc2Pos: %d\n\n", (int)enc2Pos, (int)enc2Pos);
-            serialPrint(printBuf); //27382 - -14096
+    while(1){
+        currTime = micross;
+
+        enc1Pos = enc1.calcPosn();
+        enc2Pos = enc2.calcPosn();
+
+        if(currTime - prevTime >= 10000){
+            prevTime = currTime;
+
+            float rightSpeed = rightRPM * rpm2speed;
+            int32_t d1 = rightSpeed;
+            float f2 = rightSpeed - d1;
+            int32_t d2 = trunc(f2 * 10000);
+
+            sprintf(printBuf, "right speed: %d.%03d mph\n", d1, d2);
+            //sprintf(printBuf, "right rpm: %f\n", rightRPM);
+            serialPrint(printBuf);
         }
     }
 }
