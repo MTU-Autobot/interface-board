@@ -4,6 +4,7 @@
  */
 
 #include "kinetis.h"
+#include "rc.h"
 
 void rcInit(void){
     // enable interrupt on both edges, gpio
@@ -18,4 +19,21 @@ void rcInit(void){
 
     // enable interrupt for portd
     NVIC_ENABLE_IRQ(IRQ_PORTD);
+}
+
+// function to check pulse width is within absolute limits
+uint8_t checkPulse(uint16_t pw){
+    return (pw <= RC_HIGH_LIM && pw >= RC_LOW_LIM);
+}
+
+// taken from arduino
+int32_t map(int32_t x, int32_t inMin, int32_t inMax, int32_t outMin, int32_t outMax){
+    return (x - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
+}
+
+// quick function to make things bounded
+int32_t bound(int32_t val, int32_t lowLimit, int32_t highLimit){
+    if(val > highLimit){val = highLimit;}
+    if(val < lowLimit){val = lowLimit;}
+    return val;
 }
