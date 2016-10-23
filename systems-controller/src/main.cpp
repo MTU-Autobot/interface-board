@@ -16,29 +16,28 @@ extern "C" {
 #define CNTS_PER_REV 512 * 20 * 4
 #define RPM_TO_SPEED (29.0 * PI * 60.0) / (12.0 * 5280.0)
 
-// stack light pins
+// stack light pins and mode
 #define SL_RED 0x01
 #define SL_YELLOW 0x02
 #define SL_GREEN 0x04
+#define MODE_ESTOP 0
+#define MODE_MANUAL 1
+#define MODE_AUTO 2
 
+// timekeeping
+#define FSTIME 500000
 volatile uint32_t micross = 0;
 
 // variables for rc receiver
-volatile uint32_t ch0rise = 0;
-volatile uint32_t ch0pw = 0;
-volatile uint8_t ch0good = 0;
+#define NUM_CHANNELS 4
+#define RC_X 0
+#define RC_Y 1
+#define RC_ESTOP 2
+#define RC_MODE 3
 
-volatile uint32_t ch1rise = 0;
-volatile uint32_t ch1pw = 0;
-volatile uint8_t ch1good = 0;
-
-volatile uint32_t ch2rise = 0;
-volatile uint32_t ch2pw = 0;
-volatile uint8_t ch2good = 0;
-
-volatile uint32_t ch3rise = 0;
-volatile uint32_t ch3pw = 0;
-volatile uint8_t ch3good = 0;
+volatile uint32_t chRise[NUM_CHANNELS];
+volatile uint16_t ch[NUM_CHANNELS];
+volatile uint8_t pwGood[NUM_CHANNELS];
 
 // encoder variables
 int32_t rightEncPos = 0;
@@ -78,38 +77,38 @@ void portd_isr(void){
         PORTD_PCR0 |= PORT_PCR_ISF;
         // get pulse width
         if(GPIOD_PDIR & 0x01){
-            ch0rise = micross;
+            chRise[RC_X] = micross;
         }else{
-            ch0pw = micross - ch0rise;
-            ch0good = 1;
+            ch[RC_X] = micross - chRise[RC_X];
+            pwGood[RC_X] = 1;
         }
     }else if(PORTD_PCR1 & PORT_PCR_ISF){
         // if not PD0, then PD1
         PORTD_PCR1 |= PORT_PCR_ISF;
         // get pulse width
         if(GPIOD_PDIR & 0x02){
-            ch1rise = micross;
+            chRise[RC_Y] = micross;
         }else{
-            ch1pw = micross - ch1rise;
-            ch1good = 1;
+            ch[RC_Y] = micross - chRise[RC_Y];
+            pwGood[RC_Y] = 1;
         }
     }else if(PORTD_PCR2 & PORT_PCR_ISF){
         PORTD_PCR2 |= PORT_PCR_ISF;
         // get pulse width
         if(GPIOD_PDIR & 0x04){
-            ch2rise = micross;
+            chRise[RC_ESTOP] = micross;
         }else{
-            ch2pw = micross - ch2rise;
-            ch2good = 1;
+            ch[RC_ESTOP] = micross - chRise[RC_ESTOP];
+            pwGood[RC_ESTOP] = 1;
         }
     }else if(PORTD_PCR3 & PORT_PCR_ISF){
         PORTD_PCR3 |= PORT_PCR_ISF;
         // get pulse width
         if(GPIOD_PDIR & 0x08){
-            ch3rise = micross;
+            chRise[RC_MODE] = micross;
         }else{
-            ch3pw = micross - ch3rise;
-            ch3good = 1;
+            ch[RC_MODE] = micross - chRise[RC_MODE];
+            pwGood[RC_MODE] = 1;
         }
     }
 }
@@ -146,10 +145,10 @@ int main(){
     NVIC_ENABLE_IRQ(IRQ_PIT_CH0);
     NVIC_ENABLE_IRQ(IRQ_PIT_CH1);
 
-    // start pwm and set both outputs to 1ms
+    // start pwm and set both outputs to 1.5ms
     pwmInit();
-    pwmSetPeriod(PWM1, 2250);
-    pwmSetPeriod(PWM2, 2250);
+    pwmSetPeriod(PWM1, MID_PERIOD);
+    pwmSetPeriod(PWM2, MID_PERIOD);
     rcInit();
 
     // setup and start encoder objects
@@ -160,9 +159,16 @@ int main(){
     rightEnc.zeroFTM();
     leftEnc.zeroFTM();
 
-    char printBuf[32] = "";
+    char printBuf[128] = "";
+    // timekeeping
     uint32_t currTime = 0;
     uint32_t prevTime = 0;
+    uint32_t fsTimer = 0;
+
+    // misc mode and channel variables
+    uint8_t failsafe = 1;
+    uint16_t chLast[NUM_CHANNELS];
+    uint8_t mode = MODE_ESTOP;
 
     // motor variables for manual control
     int16_t ch0Mapped = 0;
@@ -179,33 +185,97 @@ int main(){
         rightEncPos = rightEnc.calcPosn();
         leftEncPos = leftEnc.calcPosn();
 
-        // calculate motor values
-        // see http://home.kendra.com/mauser/Joystick.html for an explaination
-        ch0Mapped = 3375 - map(ch0pw, CH0_MIN, CH0_MAX, MAX_PERIOD, MIN_PERIOD);
-        ch1Mapped = map(ch1pw, CH1_MIN, CH1_MAX, MIN_PERIOD, MAX_PERIOD);
-        rPl = (MAX_PERIOD - abs(ch0Mapped)) * (ch1Mapped / MAX_PERIOD) + ch1Mapped;
-        rMl = (MAX_PERIOD - ch1Mapped) * (ch0Mapped / MAX_PERIOD) + ch0Mapped;
-        rightMotor = bound(rPl + rMl, MIN_PERIOD, MAX_PERIOD);
-        leftMotor = bound(rPl - rMl, MIN_PERIOD, MAX_PERIOD);
+        // check pulse widths
+        for(uint8_t i = 0; i < NUM_CHANNELS; i++){
+            if(checkPulse(ch[i])){
+                chLast[i] = ch[i];
+            }else{
+                pwGood[i] = 0;
+                ch[i] = chLast[i];
+            }
+        }
 
-        if(currTime - prevTime >= 10000){
+        // get operation mode
+        mode = getMode(ch[RC_MODE], ch[RC_ESTOP], MODE_MIN, MODE_MID, MODE_MAX, RC_THRESH);
+
+        switch(mode){
+            case MODE_ESTOP:
+                // stack light to red
+                GPIOB_PDOR = SL_RED;
+
+                // kill motors
+                pwmSetPeriod(PWM1, MID_PERIOD);
+                pwmSetPeriod(PWM2, MID_PERIOD);
+                break;
+            case MODE_MANUAL:
+                // stack light to yellow
+                GPIOB_PDOR = SL_YELLOW;
+
+                // calculate motor values
+                // see http://home.kendra.com/mauser/Joystick.html for an explaination
+                ch0Mapped = ((MIN_PERIOD + MAX_PERIOD) / 2) - map(ch[RC_X], CH0_MIN, CH0_MAX, MAX_PERIOD, MIN_PERIOD);
+                ch1Mapped = map(ch[RC_Y], CH1_MIN, CH1_MAX, MIN_PERIOD, MAX_PERIOD);
+                rPl = (MAX_PERIOD - abs(ch0Mapped)) * (ch1Mapped / MAX_PERIOD) + ch1Mapped;
+                rMl = (MAX_PERIOD - ch1Mapped) * (ch0Mapped / MAX_PERIOD) + ch0Mapped;
+                rightMotor = bound(rPl + rMl, MIN_PERIOD, MAX_PERIOD);
+                leftMotor = bound(rPl - rMl, MIN_PERIOD, MAX_PERIOD);
+
+                // update outputs
+                if(!failsafe){
+                    pwmSetPeriod(PWM1, rightMotor);
+                    pwmSetPeriod(PWM2, leftMotor);
+                }else{
+                    pwmSetPeriod(PWM1, MID_PERIOD);
+                    pwmSetPeriod(PWM2, MID_PERIOD);
+                }
+
+                break;
+            case MODE_AUTO:
+                GPIOB_PDOR = SL_GREEN;
+                break;
+            default:
+                // also estop mode so kill everything, hopefully without fire
+                GPIOB_PDOR = SL_RED;
+
+                pwmSetPeriod(PWM1, MID_PERIOD);
+                pwmSetPeriod(PWM2, MID_PERIOD);
+                break;
+        }
+
+        if(currTime - prevTime >= 100000){
             prevTime = currTime;
 
+            /*
             float rightSpeed = rightRPM * RPM_TO_SPEED;
             int32_t d1 = rightSpeed;
             float f2 = rightSpeed - d1;
             int32_t d2 = trunc(f2 * 10000);
+            */
 
             //sprintf(printBuf, "right speed: %d.%03d mph\n", (int)d1, (int)d2);
             //sprintf(printBuf, "right rpm: %f\n", rightRPM);
-            sprintf(printBuf, "left: %d\tright: %d\n", (int)leftMotor, (int)rightMotor);
+            sprintf(printBuf, "rc_x: %d\nrc_y: %d\nrc_estop: %d\nrc_mode: %d\n\n", (int)pwGood[RC_X], (int)pwGood[RC_Y], (int)pwGood[RC_ESTOP], (int)pwGood[RC_MODE]);
+            //sprintf(printBuf, "rc_x: %d\nrc_y: %d\nrc_estop: %d\nrc_mode: %d\n\n", (int)ch[RC_X], (int)ch[RC_Y], (int)ch[RC_ESTOP], (int)ch[RC_MODE]);
             serialPrint(printBuf);
         }
 
-        // clear good flag after loop
-        ch0good = 0;
-        ch1good = 0;
-        ch2good = 0;
-        ch3good = 0;
+        //failsafe check
+        if(micross - fsTimer > FSTIME){
+            fsTimer = micross;
+
+            for(uint8_t i = 0; i < NUM_CHANNELS; i++){
+                if(pwGood[i]){
+                    failsafe = 0;
+                }else{
+                    failsafe = 1;
+                    mode = MODE_ESTOP;\
+                }
+            }
+
+            // clear good flag after check
+            for(uint8_t i = 0; i < NUM_CHANNELS; i++){
+                pwGood[i] = 0;
+            }
+        }
     }
 }
