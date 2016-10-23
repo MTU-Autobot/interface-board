@@ -196,7 +196,9 @@ int main(){
         }
 
         // get operation mode
-        mode = getMode(ch[RC_MODE], ch[RC_ESTOP], MODE_MIN, MODE_MID, MODE_MAX, RC_THRESH);
+        if(!failsafe){
+            mode = getMode(ch[RC_MODE], ch[RC_ESTOP], MODE_MIN, MODE_MID, MODE_MAX, RC_THRESH);
+        }
 
         switch(mode){
             case MODE_ESTOP:
@@ -213,7 +215,7 @@ int main(){
 
                 // calculate motor values
                 // see http://home.kendra.com/mauser/Joystick.html for an explaination
-                ch0Mapped = ((MIN_PERIOD + MAX_PERIOD) / 2) - map(ch[RC_X], CH0_MIN, CH0_MAX, MAX_PERIOD, MIN_PERIOD);
+                ch0Mapped = MID_PERIOD - map(ch[RC_X], CH0_MIN, CH0_MAX, MAX_PERIOD, MIN_PERIOD);
                 ch1Mapped = map(ch[RC_Y], CH1_MIN, CH1_MAX, MIN_PERIOD, MAX_PERIOD);
                 rPl = (MAX_PERIOD - abs(ch0Mapped)) * (ch1Mapped / MAX_PERIOD) + ch1Mapped;
                 rMl = (MAX_PERIOD - ch1Mapped) * (ch0Mapped / MAX_PERIOD) + ch0Mapped;
@@ -254,8 +256,9 @@ int main(){
 
             //sprintf(printBuf, "right speed: %d.%03d mph\n", (int)d1, (int)d2);
             //sprintf(printBuf, "right rpm: %f\n", rightRPM);
-            sprintf(printBuf, "rc_x: %d\nrc_y: %d\nrc_estop: %d\nrc_mode: %d\n\n", (int)pwGood[RC_X], (int)pwGood[RC_Y], (int)pwGood[RC_ESTOP], (int)pwGood[RC_MODE]);
+            //sprintf(printBuf, "rc_x: %d\nrc_y: %d\nrc_estop: %d\nrc_mode: %d\n\n", (int)pwGood[RC_X], (int)pwGood[RC_Y], (int)pwGood[RC_ESTOP], (int)pwGood[RC_MODE]);
             //sprintf(printBuf, "rc_x: %d\nrc_y: %d\nrc_estop: %d\nrc_mode: %d\n\n", (int)ch[RC_X], (int)ch[RC_Y], (int)ch[RC_ESTOP], (int)ch[RC_MODE]);
+            sprintf(printBuf, "failsafe: %d\n", (int)failsafe);
             serialPrint(printBuf);
         }
 
@@ -268,7 +271,8 @@ int main(){
                     failsafe = 0;
                 }else{
                     failsafe = 1;
-                    mode = MODE_ESTOP;\
+                    mode = MODE_ESTOP;
+                    break;
                 }
             }
 
