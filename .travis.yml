@@ -40,7 +40,7 @@ install:
     - pip install -U platformio
 
 script:
-    - platformio ci --lib="." --lib="systems-controller/lib/quadrature" --board=teensy31 -v
+    - platformio ci --lib="." --lib="systems-controller/lib/quadrature" --lib="systems-controller/src" --board=teensy31 -v
 
 
 #
