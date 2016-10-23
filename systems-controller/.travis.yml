@@ -33,11 +33,14 @@ cache:
     directories:
         - "~/.platformio"
 
+env:
+    - PLATFORMIO_CI_SRC=main.cpp
+
 install:
     - pip install -U platformio
 
 script:
-    - platformio run
+    - platformio ci --board=teensy31
 
 
 #
