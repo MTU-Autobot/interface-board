@@ -40,7 +40,7 @@ install:
     - pip install -U platformio
 
 script:
-    - platformio ci --board=teensy31 -l systems-controller/lib/
+    - platformio ci --lib="." --board=teensy31 -v
 
 
 #
