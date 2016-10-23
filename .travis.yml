@@ -34,7 +34,7 @@ cache:
         - "~/.platformio"
 
 env:
-    - PLATFORMIO_CI_SRC=main.cpp
+    - PLATFORMIO_CI_SRC=systems-controller/src/main.cpp
 
 install:
     - pip install -U platformio
