@@ -11,9 +11,9 @@ extern "C" {
 }
 
 // speed calculation stuff
-// encoders are 512ppr, 20:1 gearbox, 4 counts/count? (not sure why this happens,
-// its just what the encoder module produces)
-#define CNTS_PER_REV 512 * 20 * 4
+// encoders are 512 counts per revolution, 4 pulses per count. 20:1 gearbox
+#define CNTS_PER_REV_WHEEL 512 * 4 * 20
+#define CNTS_PER_REV 512 * 4
 #define RPM_TO_SPEED (29.0 * PI * 60.0) / (12.0 * 5280.0)
 
 // stack light pins and mode
@@ -39,7 +39,11 @@ volatile uint32_t chRise[NUM_CHANNELS];
 volatile uint16_t ch[NUM_CHANNELS];
 volatile uint8_t pwGood[NUM_CHANNELS];
 
-// encoder variables
+// encoder and motor variables
+#define KP 0.0
+#define KI 0.0
+#define KD 0.0
+
 int32_t rightEncPos = 0;
 int32_t leftEncPos = 0;
 volatile int32_t lastRightEncPos = 0;
@@ -215,8 +219,8 @@ int main(){
 
                 // calculate motor values
                 // see http://home.kendra.com/mauser/Joystick.html for an explaination
-                ch0Mapped = MID_PERIOD - map(ch[RC_X], CH0_MIN, CH0_MAX, MAX_PERIOD, MIN_PERIOD);
-                ch1Mapped = map(ch[RC_Y], CH1_MIN, CH1_MAX, MIN_PERIOD, MAX_PERIOD);
+                ch0Mapped = MID_PERIOD - (int16_t)map(ch[RC_X], CH0_MIN, CH0_MAX, MAX_PERIOD, MIN_PERIOD);
+                ch1Mapped = (int16_t)map(ch[RC_Y], CH1_MIN, CH1_MAX, MIN_PERIOD, MAX_PERIOD);
                 rPl = (MAX_PERIOD - abs(ch0Mapped)) * (ch1Mapped / MAX_PERIOD) + ch1Mapped;
                 rMl = (MAX_PERIOD - ch1Mapped) * (ch0Mapped / MAX_PERIOD) + ch0Mapped;
                 rightMotor = bound(rPl + rMl, MIN_PERIOD, MAX_PERIOD);
@@ -236,7 +240,7 @@ int main(){
                 GPIOB_PDOR = SL_GREEN;
                 break;
             default:
-                // also estop mode so kill everything, hopefully without fire
+                // also estop mode so kill everything, hopefully without fire 🔥
                 GPIOB_PDOR = SL_RED;
 
                 pwmSetPeriod(PWM1, MID_PERIOD);
@@ -283,3 +287,33 @@ int main(){
         }
     }
 }
+
+/*
+float rightPID(float cmd, float target, float actual){
+    float error = 0.0;
+    float pidTerm = 0.0;
+    float derivative = 0.0;
+    static float integral = 0.0;
+    static float lastError = 0.0;
+
+    error = abs(target) - abs(actual);
+    integral += error;
+    derivative = error - lastError;
+    pidTerm = (KP * error) + (KI * integral) + (KD * derivative);
+    return cmd + pidTerm;
+}
+
+float leftPID(float cmd, float target, float actual){
+    float error = 0.0;
+    float pidTerm = 0.0;
+    float derivative = 0.0;
+    static float integral = 0.0;
+    static float lastError = 0.0;
+
+    error = abs(target) - abs(actual);
+    integral += error;
+    derivative = error - lastError;
+    pidTerm = (KP * error) + (KI * integral) + (KD * derivative);
+    return cmd + pidTerm;
+}
+*/

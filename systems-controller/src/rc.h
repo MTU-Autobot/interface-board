@@ -22,7 +22,7 @@
 
 void rcInit(void);
 uint8_t checkPulse(uint16_t pw);
-int32_t map(int32_t x, int32_t inMin, int32_t inMax, int32_t outMin, int32_t outMax);
+float map(float value, float fromLow, float fromHigh, float toLow, float toHigh);
 int32_t bound(int32_t val, int32_t lowLimit, int32_t highLimit);
 uint8_t getMode(uint16_t ch, uint16_t estop, uint16_t lowPoint, uint16_t midPoint, uint16_t highPoint, uint16_t threshold);
 

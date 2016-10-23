@@ -26,9 +26,15 @@ uint8_t checkPulse(uint16_t pw){
     return (pw <= RC_HIGH_LIM && pw >= RC_LOW_LIM);
 }
 
-// taken from arduino
-int32_t map(int32_t x, int32_t inMin, int32_t inMax, int32_t outMin, int32_t outMax){
-    return (x - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
+// remap one range to another
+float map(float value, float fromLow, float fromHigh, float toLow, float toHigh){
+    // get sive of range
+    float fromRange = fromHigh - fromLow;
+    float toRange = toHigh - toLow;
+
+    // convert low range into a 0-1 range
+    float valueNew = (value - fromLow) / fromRange;
+    return toLow + (valueNew * toRange);
 }
 
 // quick function to make things bounded
