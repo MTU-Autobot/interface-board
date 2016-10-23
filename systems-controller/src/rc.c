@@ -56,4 +56,5 @@ uint8_t getMode(uint16_t ch, uint16_t estop, uint16_t lowPoint, uint16_t midPoin
     if(lowPoint < highBound && lowPoint > lowBound) return 2;
     if(midPoint < highBound && midPoint > lowBound) return 1;
     if(highPoint < highBound && highPoint > lowBound) return 1;
+    return 0;
 }
