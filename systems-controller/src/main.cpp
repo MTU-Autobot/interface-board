@@ -164,6 +164,8 @@ int main(){
     leftEnc.zeroFTM();
 
     char printBuf[128] = "";
+    char recvBuf[128] = "";
+
     // timekeeping
     uint32_t currTime = 0;
     uint32_t prevTime = 0;
@@ -237,7 +239,19 @@ int main(){
 
                 break;
             case MODE_AUTO:
+                // green for auto mode
                 GPIOB_PDOR = SL_GREEN;
+
+                if(serialRead(recvBuf, 128, '\n')){
+                    serialPrint(recvBuf);
+
+                    if(strcmp(recvBuf, "manual\r") == 0){
+                        serialPrint("manual mode set\r\n");
+                    }else if(strcmp(recvBuf, "auto\r") == 0){
+                        serialPrint("auto mode set\r\n");
+                    }
+                }
+
                 break;
             default:
                 // also estop mode so kill everything, hopefully without fire 🔥
@@ -248,8 +262,9 @@ int main(){
                 break;
         }
 
-        if(currTime - prevTime >= 100000){
+        if(currTime - prevTime >= 3000000){
             prevTime = currTime;
+            static int i = 0;
 
             /*
             float rightSpeed = rightRPM * RPM_TO_SPEED;
@@ -262,7 +277,7 @@ int main(){
             //sprintf(printBuf, "right rpm: %f\n", rightRPM);
             //sprintf(printBuf, "rc_x: %d\nrc_y: %d\nrc_estop: %d\nrc_mode: %d\n\n", (int)pwGood[RC_X], (int)pwGood[RC_Y], (int)pwGood[RC_ESTOP], (int)pwGood[RC_MODE]);
             //sprintf(printBuf, "rc_x: %d\nrc_y: %d\nrc_estop: %d\nrc_mode: %d\n\n", (int)ch[RC_X], (int)ch[RC_Y], (int)ch[RC_ESTOP], (int)ch[RC_MODE]);
-            sprintf(printBuf, "failsafe: %d\n", (int)failsafe);
+            sprintf(printBuf, "int: %d\n", i++);
             serialPrint(printBuf);
         }
 

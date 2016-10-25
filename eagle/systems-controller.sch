@@ -1196,10 +1196,10 @@ Datasheet: &lt;a href="http://cache.freescale.com/files/32bit/doc/data_sheet/K20
 <device name="" package="10118192">
 <connects>
 <connect gate="A" pin="D+" pad="3"/>
-<connect gate="A" pin="D-" pad="4"/>
-<connect gate="A" pin="GND" pad="1"/>
-<connect gate="A" pin="ID" pad="2"/>
-<connect gate="A" pin="VBUS" pad="5"/>
+<connect gate="A" pin="D-" pad="2"/>
+<connect gate="A" pin="GND" pad="5"/>
+<connect gate="A" pin="ID" pad="4"/>
+<connect gate="A" pin="VBUS" pad="1"/>
 </connects>
 <technologies>
 <technology name=""/>
