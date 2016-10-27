@@ -25,7 +25,8 @@ extern "C" {
 #define MODE_AUTO 2
 
 // timekeeping
-#define FSTIME 500000
+#define FS_TIME 500000
+#define BLINK_TIME 1000000
 volatile uint32_t micross = 0;
 
 // variables for rc receiver
@@ -104,6 +105,7 @@ void portd_isr(void){
         }else{
             ch[RC_ESTOP] = micross - chRise[RC_ESTOP];
             pwGood[RC_ESTOP] = 1;
+            //serialPrint("wtf\n");
         }
     }else if(PORTD_PCR3 & PORT_PCR_ISF){
         PORTD_PCR3 |= PORT_PCR_ISF;
@@ -122,12 +124,6 @@ QuadDecode<1> rightEnc;
 QuadDecode<2> leftEnc;
 
 int main(){
-    // PORTC_PCR5 0xxx x001 x100 x000
-    // Pin Mux Control (10-8)=0x001, Drive Strength Enable (6)=1
-    PORTC_PCR5 = PORT_PCR_MUX(1) | PORT_PCR_DSE;
-    GPIOC_PDDR |= 0x20;
-    GPIOC_PDOR |= 0x20;
-
     // stack light pin configuration, PORTB 0-2
     PORTB_PCR0 = PORT_PCR_MUX(1) | PORT_PCR_DSE;
     PORTB_PCR1 = PORT_PCR_MUX(1) | PORT_PCR_DSE;
@@ -170,6 +166,7 @@ int main(){
     uint32_t currTime = 0;
     uint32_t prevTime = 0;
     uint32_t fsTimer = 0;
+    uint32_t blinkTimer = 0;
 
     // misc mode and channel variables
     uint8_t failsafe = 1;
@@ -202,7 +199,7 @@ int main(){
         }
 
         //failsafe check
-        if(micross - fsTimer > FSTIME){
+        if(micross - fsTimer > FS_TIME){
             fsTimer = micross;
 
             for(uint8_t i = 0; i < NUM_CHANNELS; i++){
@@ -248,6 +245,10 @@ int main(){
                 rightMotor = bound(rPl + rMl, MIN_PERIOD, MAX_PERIOD);
                 leftMotor = bound(rPl - rMl, MIN_PERIOD, MAX_PERIOD);
 
+                // apply speed limits
+                rightMotor = map(rightMotor, MIN_PERIOD, MAX_PERIOD, LOW_LIMIT_PERIOD, HIGH_LIMIT_PERIOD);
+                leftMotor = map(leftMotor, MIN_PERIOD, MAX_PERIOD, LOW_LIMIT_PERIOD, HIGH_LIMIT_PERIOD);
+
                 // update outputs
                 if(!failsafe){
                     pwmSetPeriod(PWM1, rightMotor);
@@ -259,8 +260,12 @@ int main(){
 
                 break;
             case MODE_AUTO:
-                // green for auto mode
-                GPIOB_PDOR = SL_GREEN;
+                // blink green for auto mode
+                if(micross - blinkTimer > BLINK_TIME){
+                    blinkTimer = micross;
+                    // toggle output
+                    GPIOB_PTOR = SL_GREEN;
+                }
 
                 /*
                 if(serialRead(recvBuf, 128, '\n')){
@@ -284,7 +289,7 @@ int main(){
                 break;
         }
 
-        if(currTime - prevTime >= 3000000){
+        if(currTime - prevTime >= 10000){
             prevTime = currTime;
             static int i = 0;
 
@@ -299,7 +304,7 @@ int main(){
             //sprintf(printBuf, "right rpm: %f\n", rightRPM);
             //sprintf(printBuf, "rc_x: %d\nrc_y: %d\nrc_estop: %d\nrc_mode: %d\n\n", (int)pwGood[RC_X], (int)pwGood[RC_Y], (int)pwGood[RC_ESTOP], (int)pwGood[RC_MODE]);
             //sprintf(printBuf, "rc_x: %d\nrc_y: %d\nrc_estop: %d\nrc_mode: %d\n\n", (int)ch[RC_X], (int)ch[RC_Y], (int)ch[RC_ESTOP], (int)ch[RC_MODE]);
-            sprintf(printBuf, "int: %d\n", i++);
+            sprintf(printBuf, "mode: %d failsafe: %d count: %d\n", (int)mode, (int)failsafe, i++);
             serialPrint(printBuf);
         }
     }
