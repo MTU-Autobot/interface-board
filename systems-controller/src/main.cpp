@@ -18,8 +18,8 @@ extern "C" {
 
 // stack light pins and mode
 #define SL_RED 0x01
-#define SL_YELLOW 0x02
-#define SL_GREEN 0x04
+#define SL_YELLOW 0x04
+#define SL_GREEN 0x02
 #define MODE_ESTOP 0
 #define MODE_MANUAL 1
 #define MODE_AUTO 2
@@ -201,6 +201,26 @@ int main(){
             }
         }
 
+        //failsafe check
+        if(micross - fsTimer > FSTIME){
+            fsTimer = micross;
+
+            for(uint8_t i = 0; i < NUM_CHANNELS; i++){
+                if(pwGood[i]){
+                    failsafe = 0;
+                }else{
+                    failsafe = 1;
+                    mode = MODE_ESTOP;
+                    break;
+                }
+            }
+
+            // clear good flag after check
+            for(uint8_t i = 0; i < NUM_CHANNELS; i++){
+                pwGood[i] = 0;
+            }
+        }
+
         // get operation mode
         if(!failsafe){
             mode = getMode(ch[RC_MODE], ch[RC_ESTOP], MODE_MIN, MODE_MID, MODE_MAX, RC_THRESH);
@@ -242,6 +262,7 @@ int main(){
                 // green for auto mode
                 GPIOB_PDOR = SL_GREEN;
 
+                /*
                 if(serialRead(recvBuf, 128, '\n')){
                     serialPrint(recvBuf);
 
@@ -251,6 +272,7 @@ int main(){
                         serialPrint("auto mode set\r\n");
                     }
                 }
+                */
 
                 break;
             default:
@@ -279,26 +301,6 @@ int main(){
             //sprintf(printBuf, "rc_x: %d\nrc_y: %d\nrc_estop: %d\nrc_mode: %d\n\n", (int)ch[RC_X], (int)ch[RC_Y], (int)ch[RC_ESTOP], (int)ch[RC_MODE]);
             sprintf(printBuf, "int: %d\n", i++);
             serialPrint(printBuf);
-        }
-
-        //failsafe check
-        if(micross - fsTimer > FSTIME){
-            fsTimer = micross;
-
-            for(uint8_t i = 0; i < NUM_CHANNELS; i++){
-                if(pwGood[i]){
-                    failsafe = 0;
-                }else{
-                    failsafe = 1;
-                    mode = MODE_ESTOP;
-                    break;
-                }
-            }
-
-            // clear good flag after check
-            for(uint8_t i = 0; i < NUM_CHANNELS; i++){
-                pwGood[i] = 0;
-            }
         }
     }
 }
