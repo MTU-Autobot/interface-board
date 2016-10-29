@@ -26,7 +26,7 @@ extern "C" {
 
 // timekeeping
 #define FS_TIME 500000
-#define BLINK_TIME 1000000
+#define BLINK_TIME 750000
 volatile uint32_t micross = 0;
 
 // variables for rc receiver
@@ -238,8 +238,8 @@ int main(){
 
                 // calculate motor values
                 // see http://home.kendra.com/mauser/Joystick.html for an explaination
-                ch0Mapped = MID_PERIOD - (int16_t)map(ch[RC_X], CH0_MIN, CH0_MAX, MAX_PERIOD, MIN_PERIOD);
-                ch1Mapped = (int16_t)map(ch[RC_Y], CH1_MIN, CH1_MAX, MIN_PERIOD, MAX_PERIOD);
+                ch0Mapped = MID_PERIOD - (int16_t)map(ch[RC_X], CH0_MIN, CH0_MAX, MIN_PERIOD, MAX_PERIOD);
+                ch1Mapped = (int16_t)map(ch[RC_Y], CH1_MIN, CH1_MAX, MAX_PERIOD, MIN_PERIOD);
                 rPl = (MAX_PERIOD - abs(ch0Mapped)) * (ch1Mapped / MAX_PERIOD) + ch1Mapped;
                 rMl = (MAX_PERIOD - ch1Mapped) * (ch0Mapped / MAX_PERIOD) + ch0Mapped;
                 rightMotor = bound(rPl + rMl, MIN_PERIOD, MAX_PERIOD);
@@ -260,7 +260,11 @@ int main(){
 
                 break;
             case MODE_AUTO:
+                pwmSetPeriod(PWM1, MID_PERIOD);
+                pwmSetPeriod(PWM2, MID_PERIOD);
+
                 // blink green for auto mode
+                GPIOB_PCOR = SL_RED | SL_YELLOW;
                 if(micross - blinkTimer > BLINK_TIME){
                     blinkTimer = micross;
                     // toggle output
@@ -289,7 +293,7 @@ int main(){
                 break;
         }
 
-        if(currTime - prevTime >= 10000){
+        if(currTime - prevTime >= 100000){
             prevTime = currTime;
             static int i = 0;
 
@@ -304,7 +308,8 @@ int main(){
             //sprintf(printBuf, "right rpm: %f\n", rightRPM);
             //sprintf(printBuf, "rc_x: %d\nrc_y: %d\nrc_estop: %d\nrc_mode: %d\n\n", (int)pwGood[RC_X], (int)pwGood[RC_Y], (int)pwGood[RC_ESTOP], (int)pwGood[RC_MODE]);
             //sprintf(printBuf, "rc_x: %d\nrc_y: %d\nrc_estop: %d\nrc_mode: %d\n\n", (int)ch[RC_X], (int)ch[RC_Y], (int)ch[RC_ESTOP], (int)ch[RC_MODE]);
-            sprintf(printBuf, "mode: %d failsafe: %d count: %d\n", (int)mode, (int)failsafe, i++);
+            //sprintf(printBuf, "mode: %d failsafe: %d count: %d\n", (int)mode, (int)failsafe, i++);
+            sprintf(printBuf, "left encoder: %d right encoder: %d int: %d\r\n", (int)leftEncPos, (int)rightEncPos, i++);
             serialPrint(printBuf);
         }
     }

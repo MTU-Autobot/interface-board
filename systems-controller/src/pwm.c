@@ -7,6 +7,10 @@
 #include "pwm.h"
 
 void pwmInit(void){
+    // configure output pins
+    //PORTC_PCR1 = PORT_PCR_MUX(4) | PORT_PCR_DSE;
+    //PORTC_PCR2 = PORT_PCR_MUX(4) | PORT_PCR_DSE;
+
     /*
     // enable the FTM
     FTM0_MODE = FTM_MODE_WPDIS;
@@ -23,19 +27,22 @@ void pwmInit(void){
     FTM0_C0SC = FTM_CSC_MSB | FTM_CSC_ELSB;
     FTM0_C1SC = FTM_CSC_MSB | FTM_CSC_ELSB;
     */
-    // configure output pins
-    PORTC_PCR1 = PORT_PCR_MUX(4) | PORT_PCR_DSE;
-    PORTC_PCR2 = PORT_PCR_MUX(4) | PORT_PCR_DSE;
+    PORTC_PCR1 = PORT_PCR_MUX(4) | PORT_PCR_DSE | PORT_PCR_SRE;
+    PORTC_PCR2 = PORT_PCR_MUX(4) | PORT_PCR_DSE | PORT_PCR_SRE;
 
-    SIM_SCGC6 |= SIM_SCGC6_FTM0;
-    SIM_SCGC5 |= SIM_SCGC5_PORTC;
-    FTM0_CONF = FTM_CONF_BDMMODE(3);
-    FTM0_FMS = 0x00;
-    FTM0_MODE |= FTM_MODE_WPDIS | FTM_MODE_FTMEN;
+    FTM0_CNT = 0;
     FTM0_MOD = PWM_PERIOD;
-    FTM0_C0SC = FTM_CSC_MSB | FTM_CSC_ELSB;
-    FTM0_C1SC = FTM_CSC_MSB | FTM_CSC_ELSB;
+    FTM0_C0SC = 0x28;
+    FTM0_C1SC = 0x28;
+    //FTM0_C2SC = 0x28;
+    //FTM0_C3SC = 0x28;
+    //FTM0_C4SC = 0x28;
+    //FTM0_C5SC = 0x28;
+    //FTM0_C6SC = 0x28;
+    //FTM0_C7SC = 0x28;
     FTM0_SC = FTM_SC_CLKS(1) | FTM_SC_PS(4);
+    FTM0_MODE = FTM_MODE_WPDIS;
+    //FTM0_MODE = FTM_MODE_WPDIS | FTM_MODE_FTMEN;
 }
 
 void pwmSetPeriod(uint8_t pin, uint16_t period){

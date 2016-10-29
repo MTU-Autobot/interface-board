@@ -6,7 +6,7 @@
 #ifndef PWM_H_
 #define PWM_H_
 
-#define SPEED_LIMIT 0.25
+#define SPEED_LIMIT 0.15
 #define PWM_PERIOD 0xAFC7
 #define PWM1 0
 #define PWM2 1
