@@ -14,30 +14,33 @@ void serialPrint(const char * str){
 
 // read data until we hit the stop character, function blocks until complete,
 // returns the number of bytes read into the buffer
-uint16_t serialRead(char * buffer, uint16_t size, char stopChar){
+uint16_t serialRead(char * str, uint16_t size, char stopChar){
+    // read buffer, just set at 128 bytes for now
+    static char buffer[128] = {'\0'};
+
     if(usb_serial_available() > 0){
-        // clear buffer
-        memset(buffer, 0, size);
-        uint16_t index = 0;
+        static uint16_t index = 0;
 
-        uint8_t c = usb_serial_getchar();
+        while(usb_serial_available() > 0){
+            // get char
+            char c = usb_serial_getchar();
 
-        // block until we get a newline
-        while(c != stopChar){
-            while(usb_serial_available() > 0){
-                buffer[index] = c;
+            // check for stop character
+            if(c == stopChar || index >= size - 1){
+                // set end of input string, copy to output, and clear buffer
+                buffer[index] = '\0';
+                strcpy(str, buffer);
+                memset(buffer, 0, 128);
 
-                // make sure we dont overrun the buffer
-                if(index < size - 1){
-                    index++;
-                }else{
-                    return index;
-                }
-
-                c = usb_serial_getchar();
+                uint16_t readBytes = index;
+                index = 0;
+                return readBytes;
             }
+
+            // copy new char into buffer
+            buffer[index++] = c;
+            return 0;
         }
-        return index;
     }
     return 0;
 }

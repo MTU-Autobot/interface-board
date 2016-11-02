@@ -165,6 +165,7 @@ int main(){
     // timekeeping
     uint32_t currTime = 0;
     uint32_t prevTime = 0;
+    uint32_t endTime = 0;
     uint32_t fsTimer = 0;
     uint32_t blinkTimer = 0;
 
@@ -185,7 +186,7 @@ int main(){
         currTime = micross;
 
         // get encoder positions
-        rightEncPos = rightEnc.calcPosn();
+        rightEncPos = -1 * rightEnc.calcPosn();
         leftEncPos = leftEnc.calcPosn();
 
         // check pulse widths
@@ -236,7 +237,7 @@ int main(){
                 // stack light to yellow
                 GPIOB_PDOR = SL_YELLOW;
 
-                // calculate motor values
+                // calculate motor values, single stick to tank drive
                 // see http://home.kendra.com/mauser/Joystick.html for an explaination
                 ch0Mapped = MID_PERIOD - (int16_t)map(ch[RC_X], CH0_MIN, CH0_MAX, MIN_PERIOD, MAX_PERIOD);
                 ch1Mapped = (int16_t)map(ch[RC_Y], CH1_MIN, CH1_MAX, MAX_PERIOD, MIN_PERIOD);
@@ -271,7 +272,7 @@ int main(){
                     GPIOB_PTOR = SL_GREEN;
                 }
 
-                /*
+
                 if(serialRead(recvBuf, 128, '\n')){
                     serialPrint(recvBuf);
 
@@ -281,7 +282,7 @@ int main(){
                         serialPrint("auto mode set\r\n");
                     }
                 }
-                */
+
 
                 break;
             default:
@@ -293,7 +294,7 @@ int main(){
                 break;
         }
 
-        if(currTime - prevTime >= 100000){
+        if(currTime - prevTime >= 10000){
             prevTime = currTime;
             static int i = 0;
 
@@ -309,9 +310,12 @@ int main(){
             //sprintf(printBuf, "rc_x: %d\nrc_y: %d\nrc_estop: %d\nrc_mode: %d\n\n", (int)pwGood[RC_X], (int)pwGood[RC_Y], (int)pwGood[RC_ESTOP], (int)pwGood[RC_MODE]);
             //sprintf(printBuf, "rc_x: %d\nrc_y: %d\nrc_estop: %d\nrc_mode: %d\n\n", (int)ch[RC_X], (int)ch[RC_Y], (int)ch[RC_ESTOP], (int)ch[RC_MODE]);
             //sprintf(printBuf, "mode: %d failsafe: %d count: %d\n", (int)mode, (int)failsafe, i++);
-            sprintf(printBuf, "left encoder: %d right encoder: %d int: %d\r\n", (int)leftEncPos, (int)rightEncPos, i++);
+            //sprintf(printBuf, "left encoder: %d right encoder: %d time: %d\r\n", (int)leftEncPos, (int)rightEncPos, currTime);
+            sprintf(printBuf, "%d\t%d\t%d\t%u\r\n", i++, (int)leftEncPos, (int)rightEncPos, (unsigned int)currTime);
             serialPrint(printBuf);
         }
+
+        endTime = micross;
     }
 }
 
