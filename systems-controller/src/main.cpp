@@ -261,8 +261,8 @@ int main(){
 
                 break;
             case MODE_AUTO:
-                pwmSetPeriod(PWM1, MID_PERIOD);
-                pwmSetPeriod(PWM2, MID_PERIOD);
+                //pwmSetPeriod(PWM1, MID_PERIOD);
+                //pwmSetPeriod(PWM2, MID_PERIOD);
 
                 // blink green for auto mode
                 GPIOB_PCOR = SL_RED | SL_YELLOW;
@@ -274,15 +274,13 @@ int main(){
 
 
                 if(serialRead(recvBuf, 128, '\n')){
+                    strcat(recvBuf, "\n");
                     serialPrint(recvBuf);
 
-                    if(strcmp(recvBuf, "manual\r") == 0){
-                        serialPrint("manual mode set\r\n");
-                    }else if(strcmp(recvBuf, "auto\r") == 0){
-                        serialPrint("auto mode set\r\n");
-                    }
+                    uint16_t cmd = bound(atoi(recvBuf), MIN_PERIOD, MAX_PERIOD);
+                    pwmSetPeriod(PWM1, cmd);
+                    pwmSetPeriod(PWM2, cmd);
                 }
-
 
                 break;
             default:
@@ -311,8 +309,8 @@ int main(){
             //sprintf(printBuf, "rc_x: %d\nrc_y: %d\nrc_estop: %d\nrc_mode: %d\n\n", (int)ch[RC_X], (int)ch[RC_Y], (int)ch[RC_ESTOP], (int)ch[RC_MODE]);
             //sprintf(printBuf, "mode: %d failsafe: %d count: %d\n", (int)mode, (int)failsafe, i++);
             //sprintf(printBuf, "left encoder: %d right encoder: %d time: %d\r\n", (int)leftEncPos, (int)rightEncPos, currTime);
-            sprintf(printBuf, "%d\t%d\t%d\t%u\r\n", i++, (int)leftEncPos, (int)rightEncPos, (unsigned int)currTime);
-            serialPrint(printBuf);
+            //sprintf(printBuf, "%d\t%d\t%d\t%u\r\n", i++, (int)leftEncPos, (int)rightEncPos, (unsigned int)currTime);
+            //serialPrint(printBuf);
         }
 
         endTime = micross;

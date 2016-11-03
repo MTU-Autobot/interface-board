@@ -9,6 +9,7 @@
 
 // print out a string
 void serialPrint(const char * str){
+    usb_serial_flush_input();
     usb_serial_write((const uint8_t *)str, strlen(str));
 }
 
