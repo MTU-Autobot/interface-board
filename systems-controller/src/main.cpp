@@ -12,9 +12,11 @@ extern "C" {
 
 // speed calculation stuff
 // encoders are 512 counts per revolution, 4 pulses per count. 20:1 gearbox
+#define WHEEL_DIAMETER 29.0
 #define CNTS_PER_REV_WHEEL 512 * 4 * 20
 #define CNTS_PER_REV 512 * 4
 #define RPM_TO_SPEED (29.0 * PI * 60.0) / (12.0 * 5280.0)
+#define TICKS_TO_DIST (PI * WHEEL_DIAMETER) / CNTS_PER_REV_WHEEL
 
 // stack light pins and mode
 #define SL_RED 0x01
@@ -40,6 +42,7 @@ volatile uint32_t chRise[NUM_CHANNELS];
 volatile uint16_t ch[NUM_CHANNELS];
 volatile uint8_t pwGood[NUM_CHANNELS];
 
+/*
 // encoder and motor variables
 #define KP 0.0
 #define KI 0.0
@@ -51,6 +54,7 @@ volatile int32_t lastRightEncPos = 0;
 volatile int32_t lastLeftEncPos = 0;
 volatile float rightRPM = 0;
 volatile float leftRPM = 0;
+*/
 
 
 // interrupt every 1us
@@ -60,6 +64,7 @@ void pit0_isr(void){
     micross++;
 }
 
+/*
 // interrupt every 1ms
 void pit1_isr(void){
     //clear flag
@@ -73,6 +78,7 @@ void pit1_isr(void){
     lastRightEncPos = rightEncPos;
     lastLeftEncPos = leftEncPos;
 }
+*/
 
 // pin change interrupt for rc controller
 void portd_isr(void){
@@ -119,6 +125,41 @@ void portd_isr(void){
     }
 }
 
+// function to calculate distance moved
+float * calcDistance(int32_t rightVal, int32_t leftVal){
+    static float distArray[2] = {0};
+    static int32_t lastRightVal = 0;
+    static int32_t lastLeftVal = 0;
+
+    // calculate time since last run
+    static uint32_t then = micross;
+    uint32_t now = micross;
+    uint32_t dTime = now - then;
+    then = now;
+
+    // calculate distance
+    int32_t rightDist = (rightVal - lastRightVal) * TICKS_TO_DIST;
+    int32_t leftDist = (leftVal - lastLeftVal) * TICKS_TO_DIST;
+    distArray[0] = (rightDist / dTime) * 1000000;
+    distArray[1] = (leftDist / dTime) * 1000000;
+
+    // update last position
+    lastRightVal = rightVal;
+    lastLeftVal = leftVal;
+
+    return distArray;
+}
+
+// convert a float ot a printable string because dumb reasons
+void float2str(char * str, float fl){
+    int32_t d1 = fl;                // Get the integer part (678).
+    float f2 = fl - d1;             // Get fractional part (0.01234567).
+    int32_t d2 = trunc(f2 * 10000); // Turn into integer (123).
+    float f3 = f2 * 10000 - d2;     // Get next fractional part (0.4567).
+    int32_t d3 = trunc(f3 * 10000); // Turn into integer (4567).
+    sprintf(str, "%d.%04d%04d\n", (int)d1, (int)d2, (int)d3);
+}
+
 // create two encoder objects
 QuadDecode<1> rightEnc;
 QuadDecode<2> leftEnc;
@@ -143,7 +184,7 @@ int main(){
 
     // enable PIT interrupts
     NVIC_ENABLE_IRQ(IRQ_PIT_CH0);
-    NVIC_ENABLE_IRQ(IRQ_PIT_CH1);
+    //NVIC_ENABLE_IRQ(IRQ_PIT_CH1);
 
     // start pwm and set both outputs to 1.5ms
     pwmInit();
@@ -181,13 +222,10 @@ int main(){
     int16_t rMl = 0;
     int16_t rightMotor = 0;
     int16_t leftMotor = 0;
+    float * distVals;
 
     while(1){
         currTime = micross;
-
-        // get encoder positions
-        rightEncPos = -1 * rightEnc.calcPosn();
-        leftEncPos = leftEnc.calcPosn();
 
         // check pulse widths
         for(uint8_t i = 0; i < NUM_CHANNELS; i++){
@@ -224,77 +262,77 @@ int main(){
             mode = getMode(ch[RC_MODE], ch[RC_ESTOP], MODE_MIN, MODE_MID, MODE_MAX, RC_THRESH);
         }
 
-        switch(mode){
-            case MODE_ESTOP:
-                // stack light to red
-                GPIOB_PDOR = SL_RED;
+        if(mode == MODE_ESTOP){
+            // stack light to red
+            GPIOB_PDOR = SL_RED;
 
-                // kill motors
+            // kill motors
+            pwmSetPeriod(PWM1, MID_PERIOD);
+            pwmSetPeriod(PWM2, MID_PERIOD);
+        }else if(mode == MODE_MANUAL){
+            // stack light to yellow
+            GPIOB_PDOR = SL_YELLOW;
+
+            // calculate motor values, single stick to tank drive
+            // see http://home.kendra.com/mauser/Joystick.html for an explaination
+            ch0Mapped = MID_PERIOD - (int16_t)map(ch[RC_X], CH0_MIN, CH0_MAX, MIN_PERIOD, MAX_PERIOD);
+            ch1Mapped = (int16_t)map(ch[RC_Y], CH1_MIN, CH1_MAX, MAX_PERIOD, MIN_PERIOD);
+            rPl = (MAX_PERIOD - abs(ch0Mapped)) * (ch1Mapped / MAX_PERIOD) + ch1Mapped;
+            rMl = (MAX_PERIOD - ch1Mapped) * (ch0Mapped / MAX_PERIOD) + ch0Mapped;
+            rightMotor = bound(rPl + rMl, MIN_PERIOD, MAX_PERIOD);
+            leftMotor = bound(rPl - rMl, MIN_PERIOD, MAX_PERIOD);
+
+            // apply speed limits
+            rightMotor = map(rightMotor, MIN_PERIOD, MAX_PERIOD, LOW_LIMIT_PERIOD, HIGH_LIMIT_PERIOD);
+            leftMotor = map(leftMotor, MIN_PERIOD, MAX_PERIOD, LOW_LIMIT_PERIOD, HIGH_LIMIT_PERIOD);
+
+            // update outputs
+            if(!failsafe){
+                pwmSetPeriod(PWM1, rightMotor);
+                pwmSetPeriod(PWM2, leftMotor);
+            }else{
                 pwmSetPeriod(PWM1, MID_PERIOD);
                 pwmSetPeriod(PWM2, MID_PERIOD);
-                break;
-            case MODE_MANUAL:
-                // stack light to yellow
-                GPIOB_PDOR = SL_YELLOW;
+            }
+        }else if(mode == MODE_AUTO){
+            static uint32_t msgNum = 0;
 
-                // calculate motor values, single stick to tank drive
-                // see http://home.kendra.com/mauser/Joystick.html for an explaination
-                ch0Mapped = MID_PERIOD - (int16_t)map(ch[RC_X], CH0_MIN, CH0_MAX, MIN_PERIOD, MAX_PERIOD);
-                ch1Mapped = (int16_t)map(ch[RC_Y], CH1_MIN, CH1_MAX, MAX_PERIOD, MIN_PERIOD);
-                rPl = (MAX_PERIOD - abs(ch0Mapped)) * (ch1Mapped / MAX_PERIOD) + ch1Mapped;
-                rMl = (MAX_PERIOD - ch1Mapped) * (ch0Mapped / MAX_PERIOD) + ch0Mapped;
-                rightMotor = bound(rPl + rMl, MIN_PERIOD, MAX_PERIOD);
-                leftMotor = bound(rPl - rMl, MIN_PERIOD, MAX_PERIOD);
+            // blink green for auto mode
+            GPIOB_PCOR = SL_RED | SL_YELLOW;
+            if(micross - blinkTimer > BLINK_TIME){
+                blinkTimer = micross;
+                // toggle output
+                GPIOB_PTOR = SL_GREEN;
+            }
 
-                // apply speed limits
-                rightMotor = map(rightMotor, MIN_PERIOD, MAX_PERIOD, LOW_LIMIT_PERIOD, HIGH_LIMIT_PERIOD);
-                leftMotor = map(leftMotor, MIN_PERIOD, MAX_PERIOD, LOW_LIMIT_PERIOD, HIGH_LIMIT_PERIOD);
 
-                // update outputs
-                if(!failsafe){
-                    pwmSetPeriod(PWM1, rightMotor);
-                    pwmSetPeriod(PWM2, leftMotor);
-                }else{
-                    pwmSetPeriod(PWM1, MID_PERIOD);
-                    pwmSetPeriod(PWM2, MID_PERIOD);
+            // get encoder positions and calculate distances
+            int32_t rightEncPos = -1 * rightEnc.calcPosn();
+            int32_t leftEncPos = leftEnc.calcPosn();
+            distVals = calcDistance(rightEncPos, leftEncPos);
+
+
+            if(serialRead(recvBuf, 128, '\n')){
+                //strcat(recvBuf, "\n");
+                //serialPrint(recvBuf);
+
+                if(atoi(recvBuf) == ENCODER_MSG){
+                    //sprintf(printBuf, "%d\t%d\t%d\t%u\n", (int)msgNum++, (int)leftEncPos, (int)rightEncPos, (unsigned int)currTime);
+                    float2str(printBuf, distVals[0]);
+                    //sprintf(printBuf, "%f\t%f\n", distVals[0], distVals[1]);
+                    serialPrint(printBuf);
                 }
+            }
+        }else{
+            // also estop mode so kill everything, hopefully without fire 🔥
+            GPIOB_PDOR = SL_RED;
 
-                break;
-            case MODE_AUTO:
-                //pwmSetPeriod(PWM1, MID_PERIOD);
-                //pwmSetPeriod(PWM2, MID_PERIOD);
-
-                // blink green for auto mode
-                GPIOB_PCOR = SL_RED | SL_YELLOW;
-                if(micross - blinkTimer > BLINK_TIME){
-                    blinkTimer = micross;
-                    // toggle output
-                    GPIOB_PTOR = SL_GREEN;
-                }
-
-
-                if(serialRead(recvBuf, 128, '\n')){
-                    strcat(recvBuf, "\n");
-                    serialPrint(recvBuf);
-
-                    uint16_t cmd = bound(atoi(recvBuf), MIN_PERIOD, MAX_PERIOD);
-                    pwmSetPeriod(PWM1, cmd);
-                    pwmSetPeriod(PWM2, cmd);
-                }
-
-                break;
-            default:
-                // also estop mode so kill everything, hopefully without fire 🔥
-                GPIOB_PDOR = SL_RED;
-
-                pwmSetPeriod(PWM1, MID_PERIOD);
-                pwmSetPeriod(PWM2, MID_PERIOD);
-                break;
+            pwmSetPeriod(PWM1, MID_PERIOD);
+            pwmSetPeriod(PWM2, MID_PERIOD);
         }
 
         if(currTime - prevTime >= 10000){
             prevTime = currTime;
-            static int i = 0;
 
             /*
             float rightSpeed = rightRPM * RPM_TO_SPEED;
