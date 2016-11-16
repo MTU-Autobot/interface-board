@@ -308,16 +308,17 @@ int main(){
                 GPIOB_PTOR = SL_GREEN;
             }
 
-            // get encoder positions and calculate distances
-            int32_t rightEncPos = -1 * rightEnc.calcPosn();
-            int32_t leftEncPos = leftEnc.calcPosn();
-            currTime = micross;
-
             if(serialRead(recvBuf, 128, '\n')){
                 //strcat(recvBuf, "\n");
                 //serialPrint(recvBuf);
 
                 if(atoi(recvBuf) == ENCODER_MSG){
+                    // get encoder position
+                    int32_t rightEncPos = -1 * rightEnc.calcPosn();
+                    int32_t leftEncPos = leftEnc.calcPosn();
+                    currTime = micross;
+
+                    // send data
                     sprintf(printBuf, "%d\t%d\t%d\t%u\n", (int)msgNum++, (int)leftEncPos, (int)rightEncPos, (unsigned int)currTime);
                     serialPrint(printBuf);
                 }
