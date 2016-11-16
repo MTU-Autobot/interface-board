@@ -140,8 +140,11 @@ float * calcDistance(int32_t rightVal, int32_t leftVal){
     // calculate distance
     int32_t rightDist = (rightVal - lastRightVal) * TICKS_TO_DIST;
     int32_t leftDist = (leftVal - lastLeftVal) * TICKS_TO_DIST;
-    distArray[0] = (rightDist / dTime) * 1000000;
-    distArray[1] = (leftDist / dTime) * 1000000;
+    distArray[0] = rightDist / (float)(dTime / 1000000);
+    distArray[1] = leftDist / (float)(dTime / 1000000);
+    char test[32];
+    sprintf(test, "rightDist: %d\tleftDist: %d\n", (int)distArray[0], (int)distArray[1]);
+    serialPrint(test);
 
     // update last position
     lastRightVal = rightVal;
@@ -225,7 +228,7 @@ int main(){
     float * distVals;
 
     while(1){
-        currTime = micross;
+        //currTime = micross;
 
         // check pulse widths
         for(uint8_t i = 0; i < NUM_CHANNELS; i++){
@@ -305,21 +308,17 @@ int main(){
                 GPIOB_PTOR = SL_GREEN;
             }
 
-
             // get encoder positions and calculate distances
             int32_t rightEncPos = -1 * rightEnc.calcPosn();
             int32_t leftEncPos = leftEnc.calcPosn();
-            distVals = calcDistance(rightEncPos, leftEncPos);
-
+            currTime = micross;
 
             if(serialRead(recvBuf, 128, '\n')){
                 //strcat(recvBuf, "\n");
                 //serialPrint(recvBuf);
 
                 if(atoi(recvBuf) == ENCODER_MSG){
-                    //sprintf(printBuf, "%d\t%d\t%d\t%u\n", (int)msgNum++, (int)leftEncPos, (int)rightEncPos, (unsigned int)currTime);
-                    float2str(printBuf, distVals[0]);
-                    //sprintf(printBuf, "%f\t%f\n", distVals[0], distVals[1]);
+                    sprintf(printBuf, "%d\t%d\t%d\t%u\n", (int)msgNum++, (int)leftEncPos, (int)rightEncPos, (unsigned int)currTime);
                     serialPrint(printBuf);
                 }
             }
