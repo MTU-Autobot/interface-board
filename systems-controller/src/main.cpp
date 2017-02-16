@@ -125,43 +125,6 @@ void portd_isr(void){
     }
 }
 
-// function to calculate distance moved
-float * calcDistance(int32_t rightVal, int32_t leftVal){
-    static float distArray[2] = {0};
-    static int32_t lastRightVal = 0;
-    static int32_t lastLeftVal = 0;
-
-    // calculate time since last run
-    static uint32_t then = micross;
-    uint32_t now = micross;
-    uint32_t dTime = now - then;
-    then = now;
-
-    // calculate distance
-    int32_t rightDist = (rightVal - lastRightVal) * TICKS_TO_DIST;
-    int32_t leftDist = (leftVal - lastLeftVal) * TICKS_TO_DIST;
-    distArray[0] = rightDist / (float)(dTime / 1000000);
-    distArray[1] = leftDist / (float)(dTime / 1000000);
-    char test[32];
-    sprintf(test, "rightDist: %d\tleftDist: %d\n", (int)distArray[0], (int)distArray[1]);
-    serialPrint(test);
-
-    // update last position
-    lastRightVal = rightVal;
-    lastLeftVal = leftVal;
-
-    return distArray;
-}
-
-// convert a float ot a printable string because dumb reasons
-void float2str(char * str, float fl){
-    int32_t d1 = fl;                // Get the integer part (678).
-    float f2 = fl - d1;             // Get fractional part (0.01234567).
-    int32_t d2 = trunc(f2 * 10000); // Turn into integer (123).
-    float f3 = f2 * 10000 - d2;     // Get next fractional part (0.4567).
-    int32_t d3 = trunc(f3 * 10000); // Turn into integer (4567).
-    sprintf(str, "%d.%04d%04d\n", (int)d1, (int)d2, (int)d3);
-}
 
 // create two encoder objects
 QuadDecode<1> rightEnc;
@@ -228,8 +191,6 @@ int main(){
     float * distVals;
 
     while(1){
-        //currTime = micross;
-
         // check pulse widths
         for(uint8_t i = 0; i < NUM_CHANNELS; i++){
             if(checkPulse(ch[i])){
@@ -308,18 +269,44 @@ int main(){
                 GPIOB_PTOR = SL_GREEN;
             }
 
-            // get encoder positions and calculate distances
-            int32_t rightEncPos = -1 * rightEnc.calcPosn();
-            int32_t leftEncPos = leftEnc.calcPosn();
-            currTime = micross;
-
+            // serial messages defined in serial.h
             if(serialRead(recvBuf, 128, '\n')){
-                //strcat(recvBuf, "\n");
-                //serialPrint(recvBuf);
-
                 if(atoi(recvBuf) == ENCODER_MSG){
+                    // get encoder positions and calculate distances
+                    int32_t rightEncPos = -1 * rightEnc.calcPosn();
+                    int32_t leftEncPos = leftEnc.calcPosn();
+                    currTime = micross;
+
+                    // create string with message number, encoder positions, and current time
                     sprintf(printBuf, "%d\t%d\t%d\t%u\n", (int)msgNum++, (int)leftEncPos, (int)rightEncPos, (unsigned int)currTime);
                     serialPrint(printBuf);
+                }else if(atoi(recvBuf) == DRIVE_MSG){
+                    char driveMsg[128] = "";
+                    // read drive data and move it to a new string for operating on
+                    while(!serialRead(recvBuf, 128, '\n'));
+                    strcpy(driveMsg, recvBuf);
+
+                    // split string and store drive commands in array
+                    static uint16_t wheelVels[] = {2047, 2047};
+                    char * token;
+                    token = strtok(driveMsg, "\t");
+                    wheelVels[0] = atoi(token);
+                    token = strtok(NULL, "\t");
+                    wheelVels[1] = atoi(token);
+
+                    // get motor speeds and update outputs
+                    leftMotor = map(wheelVels[0], 4095, 0, LOW_LIMIT_PERIOD, HIGH_LIMIT_PERIOD);
+                    rightMotor = map(wheelVels[1], 4095, 0, LOW_LIMIT_PERIOD, HIGH_LIMIT_PERIOD);
+
+                    if(!failsafe){
+                        pwmSetPeriod(PWM1, rightMotor);
+                        pwmSetPeriod(PWM2, leftMotor);
+                    }else{
+                        pwmSetPeriod(PWM1, MID_PERIOD);
+                        pwmSetPeriod(PWM2, MID_PERIOD);
+                    }
+
+                    //serialPrint(driveMsg);
                 }
             }
         }else{
