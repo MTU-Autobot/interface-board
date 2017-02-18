@@ -2,6 +2,7 @@
 #include <string.h>
 #include <math.h>
 #include "QuadDecode_def.h"
+#include "PID_v1.h"
 
 extern "C" {
     #include "kinetis.h"
@@ -42,7 +43,7 @@ volatile uint32_t chRise[NUM_CHANNELS];
 volatile uint16_t ch[NUM_CHANNELS];
 volatile uint8_t pwGood[NUM_CHANNELS];
 
-/*
+
 // encoder and motor variables
 #define KP 0.0
 #define KI 0.0
@@ -54,7 +55,6 @@ volatile int32_t lastRightEncPos = 0;
 volatile int32_t lastLeftEncPos = 0;
 volatile float rightRPM = 0;
 volatile float leftRPM = 0;
-*/
 
 
 // interrupt every 1us
@@ -64,7 +64,7 @@ void pit0_isr(void){
     micross++;
 }
 
-/*
+
 // interrupt every 1ms
 void pit1_isr(void){
     //clear flag
@@ -78,7 +78,7 @@ void pit1_isr(void){
     lastRightEncPos = rightEncPos;
     lastLeftEncPos = leftEncPos;
 }
-*/
+
 
 // pin change interrupt for rc controller
 void portd_isr(void){
@@ -317,15 +317,16 @@ int main(){
             pwmSetPeriod(PWM2, MID_PERIOD);
         }
 
+        /*
         if(currTime - prevTime >= 10000){
             prevTime = currTime;
 
-            /*
+
             float rightSpeed = rightRPM * RPM_TO_SPEED;
             int32_t d1 = rightSpeed;
             float f2 = rightSpeed - d1;
             int32_t d2 = trunc(f2 * 10000);
-            */
+
 
             //sprintf(printBuf, "right speed: %d.%03d mph\n", (int)d1, (int)d2);
             //sprintf(printBuf, "right rpm: %f\n", rightRPM);
@@ -338,35 +339,6 @@ int main(){
         }
 
         endTime = micross;
+        */
     }
 }
-
-/*
-float rightPID(float cmd, float target, float actual){
-    float error = 0.0;
-    float pidTerm = 0.0;
-    float derivative = 0.0;
-    static float integral = 0.0;
-    static float lastError = 0.0;
-
-    error = abs(target) - abs(actual);
-    integral += error;
-    derivative = error - lastError;
-    pidTerm = (KP * error) + (KI * integral) + (KD * derivative);
-    return cmd + pidTerm;
-}
-
-float leftPID(float cmd, float target, float actual){
-    float error = 0.0;
-    float pidTerm = 0.0;
-    float derivative = 0.0;
-    static float integral = 0.0;
-    static float lastError = 0.0;
-
-    error = abs(target) - abs(actual);
-    integral += error;
-    derivative = error - lastError;
-    pidTerm = (KP * error) + (KI * integral) + (KD * derivative);
-    return cmd + pidTerm;
-}
-*/
