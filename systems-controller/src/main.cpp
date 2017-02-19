@@ -13,10 +13,10 @@ extern "C" {
 
 // speed calculation stuff
 // encoders are 512 counts per revolution, 4 pulses per count. 20:1 gearbox
-#define WHEEL_DIAMETER 29.0
+#define WHEEL_DIAMETER 2 * 0.371475
 #define CNTS_PER_REV_WHEEL 512 * 4 * 20
 #define CNTS_PER_REV 512 * 4
-#define RPM_TO_SPEED (29.0 * PI * 60.0) / (12.0 * 5280.0)
+#define RPM_TO_SPEED (WHEEL_DIAMETER * PI) / 60.0
 #define TICKS_TO_DIST (PI * WHEEL_DIAMETER) / CNTS_PER_REV_WHEEL
 
 // stack light pins and mode
@@ -45,16 +45,16 @@ volatile uint8_t pwGood[NUM_CHANNELS];
 
 
 // encoder and motor variables
-#define KP 0.0
-#define KI 0.0
-#define KD 0.0
+#define PID_KP 1.0
+#define PID_KI 0.0
+#define PID_KD 0.0
 
 int32_t rightEncPos = 0;
 int32_t leftEncPos = 0;
 volatile int32_t lastRightEncPos = 0;
 volatile int32_t lastLeftEncPos = 0;
-volatile float rightRPM = 0;
-volatile float leftRPM = 0;
+volatile int32_t rightEncChange = 0;
+volatile int32_t leftEncChange = 0;
 
 
 // interrupt every 1us
@@ -72,8 +72,8 @@ void pit1_isr(void){
 
     // calculate RPM
     // (change in pos) * 1000 ms/s * 60 s/min / conversion factor
-    rightRPM = ((float)(rightEncPos - lastRightEncPos) * 1000 * 60.0) / CNTS_PER_REV;
-    leftRPM = ((float)(leftEncPos - lastLeftEncPos) * 1000 * 60.0) / CNTS_PER_REV;
+    rightEncChange = rightEncPos - lastRightEncPos;
+    leftEncChange = leftEncPos - lastLeftEncPos;
 
     lastRightEncPos = rightEncPos;
     lastLeftEncPos = leftEncPos;
@@ -130,6 +130,12 @@ void portd_isr(void){
 QuadDecode<1> rightEnc;
 QuadDecode<2> leftEnc;
 
+// create PID objects for each wheel
+double leftPidSetpoint, leftPidInput, leftPidOutput = 0.0;
+double rightPidSetpoint, rightPidInput, rightPidOutput = 0.0;
+PID leftPID(&leftPidInput, &leftPidOutput, &leftPidSetpoint, PID_KP, PID_KI, PID_KD, DIRECT);
+PID rightPID(&rightPidInput, &rightPidOutput, &rightPidSetpoint, PID_KP, PID_KI, PID_KD, DIRECT);
+
 int main(){
     // stack light pin configuration, PORTB 0-2
     PORTB_PCR0 = PORT_PCR_MUX(1) | PORT_PCR_DSE;
@@ -150,7 +156,7 @@ int main(){
 
     // enable PIT interrupts
     NVIC_ENABLE_IRQ(IRQ_PIT_CH0);
-    //NVIC_ENABLE_IRQ(IRQ_PIT_CH1);
+    NVIC_ENABLE_IRQ(IRQ_PIT_CH1);
 
     // start pwm and set both outputs to 1.5ms
     pwmInit();
@@ -165,6 +171,12 @@ int main(){
     leftEnc.start();
     rightEnc.zeroFTM();
     leftEnc.zeroFTM();
+
+    // setup PID
+    leftPID.SetMode(AUTOMATIC);
+    leftPID.SetOutputLimits(0, 4095);
+    rightPID.SetMode(AUTOMATIC);
+    rightPID.SetOutputLimits(0, 4095);
 
     char printBuf[128] = "";
     char recvBuf[128] = "";
@@ -188,9 +200,13 @@ int main(){
     int16_t rMl = 0;
     int16_t rightMotor = 0;
     int16_t leftMotor = 0;
-    float * distVals;
 
     while(1){
+        // get encoder positions and calculate distances
+        rightEncPos = -1 * rightEnc.calcPosn();
+        leftEncPos = leftEnc.calcPosn();
+        currTime = micross;
+
         // check pulse widths
         for(uint8_t i = 0; i < NUM_CHANNELS; i++){
             if(checkPulse(ch[i])){
@@ -250,6 +266,25 @@ int main(){
             rightMotor = map(rightMotor, MIN_PERIOD, MAX_PERIOD, LOW_LIMIT_PERIOD, HIGH_LIMIT_PERIOD);
             leftMotor = map(leftMotor, MIN_PERIOD, MAX_PERIOD, LOW_LIMIT_PERIOD, HIGH_LIMIT_PERIOD);
 
+            /*
+            // PID computation
+            leftPidInput = map(leftEncChange, 0, 52, 0, 4095);
+            rightPidInput = map(rightEncChange, 0, 52, 0, 4095);
+            leftPidSetpoint = map(leftMotor, MIN_PERIOD, MAX_PERIOD, 0, 4095);
+            rightPidSetpoint = map(rightMotor, MIN_PERIOD, MAX_PERIOD, 0, 4095);
+            leftPID.Compute();
+            rightPID.Compute();
+
+            leftPidOutput = map(leftPidOutput, 0, 4095, LOW_LIMIT_PERIOD, HIGH_LIMIT_PERIOD);
+            rightPidOutput = map(leftPidOutput, 0, 4095, LOW_LIMIT_PERIOD, HIGH_LIMIT_PERIOD);
+
+            if(currTime - prevTime >= 10000){
+                prevTime = currTime;
+                sprintf(printBuf, "input: %d\tsetpoint: %d\toutput: %d\n", (int)rightPidInput, (int)rightPidSetpoint, (int)rightPidOutput);
+                serialPrint(printBuf);
+            }
+            */
+
             // update outputs
             if(!failsafe){
                 pwmSetPeriod(PWM1, rightMotor);
@@ -272,11 +307,6 @@ int main(){
             // serial messages defined in serial.h
             if(serialRead(recvBuf, 128, '\n')){
                 if(atoi(recvBuf) == ENCODER_MSG){
-                    // get encoder positions and calculate distances
-                    int32_t rightEncPos = -1 * rightEnc.calcPosn();
-                    int32_t leftEncPos = leftEnc.calcPosn();
-                    currTime = micross;
-
                     // create string with message number, encoder positions, and current time
                     sprintf(printBuf, "%d\t%d\t%d\t%u\n", (int)msgNum++, (int)leftEncPos, (int)rightEncPos, (unsigned int)currTime);
                     serialPrint(printBuf);
