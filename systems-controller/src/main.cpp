@@ -45,8 +45,8 @@ volatile uint8_t pwGood[NUM_CHANNELS];
 
 
 // encoder and motor variables
-#define PID_KP 1.0
-#define PID_KI 0.0
+#define PID_KP 2.0
+#define PID_KI 1.0
 #define PID_KD 0.0
 
 int32_t rightEncPos = 0;
@@ -133,8 +133,8 @@ QuadDecode<2> leftEnc;
 // create PID objects for each wheel
 double leftPidSetpoint, leftPidInput, leftPidOutput = 0.0;
 double rightPidSetpoint, rightPidInput, rightPidOutput = 0.0;
-PID leftPID(&leftPidInput, &leftPidOutput, &leftPidSetpoint, PID_KP, PID_KI, PID_KD, DIRECT);
-PID rightPID(&rightPidInput, &rightPidOutput, &rightPidSetpoint, PID_KP, PID_KI, PID_KD, DIRECT);
+PID leftPID(&leftPidInput, &leftPidOutput, &leftPidSetpoint, PID_KP, PID_KI, PID_KD, REVERSE);
+PID rightPID(&rightPidInput, &rightPidOutput, &rightPidSetpoint, PID_KP, PID_KI, PID_KD, REVERSE);
 
 int main(){
     // stack light pin configuration, PORTB 0-2
@@ -174,9 +174,9 @@ int main(){
 
     // setup PID
     leftPID.SetMode(AUTOMATIC);
-    leftPID.SetOutputLimits(0, 4095);
+    leftPID.SetOutputLimits(-100, 100);
     rightPID.SetMode(AUTOMATIC);
-    rightPID.SetOutputLimits(0, 4095);
+    rightPID.SetOutputLimits(-100, 100);
 
     char printBuf[128] = "";
     char recvBuf[128] = "";
@@ -263,27 +263,29 @@ int main(){
             leftMotor = bound(rPl - rMl, MIN_PERIOD, MAX_PERIOD);
 
             // apply speed limits
-            rightMotor = map(rightMotor, MIN_PERIOD, MAX_PERIOD, LOW_LIMIT_PERIOD, HIGH_LIMIT_PERIOD);
+            rightMotor = map(rightMotor, MIN_PERIOD, MAX_PERIOD, LOW_LIMIT_PERIOD-50, HIGH_LIMIT_PERIOD+50);
             leftMotor = map(leftMotor, MIN_PERIOD, MAX_PERIOD, LOW_LIMIT_PERIOD, HIGH_LIMIT_PERIOD);
 
             /*
             // PID computation
-            leftPidInput = map(leftEncChange, 0, 52, 0, 4095);
-            rightPidInput = map(rightEncChange, 0, 52, 0, 4095);
-            leftPidSetpoint = map(leftMotor, MIN_PERIOD, MAX_PERIOD, 0, 4095);
-            rightPidSetpoint = map(rightMotor, MIN_PERIOD, MAX_PERIOD, 0, 4095);
+            leftPidInput = map(leftEncChange, -52, 52, -100, 100);
+            rightPidInput = map(rightEncChange, -52, 52, -100, 100);
+            leftPidSetpoint = map(leftMotor, MIN_PERIOD, MAX_PERIOD, 100, -100);
+            rightPidSetpoint = map(rightMotor, MIN_PERIOD, MAX_PERIOD, 100, -100);
             leftPID.Compute();
             rightPID.Compute();
 
-            leftPidOutput = map(leftPidOutput, 0, 4095, LOW_LIMIT_PERIOD, HIGH_LIMIT_PERIOD);
-            rightPidOutput = map(leftPidOutput, 0, 4095, LOW_LIMIT_PERIOD, HIGH_LIMIT_PERIOD);
+            //leftMotor = map(leftPidOutput, -100, 100, LOW_LIMIT_PERIOD, HIGH_LIMIT_PERIOD);
+            rightMotor = map(rightPidOutput, -100, 100, LOW_LIMIT_PERIOD, HIGH_LIMIT_PERIOD);
 
             if(currTime - prevTime >= 10000){
                 prevTime = currTime;
-                sprintf(printBuf, "input: %d\tsetpoint: %d\toutput: %d\n", (int)rightPidInput, (int)rightPidSetpoint, (int)rightPidOutput);
+                sprintf(printBuf, "input: %d\tsetpoint: %d\toutput: %d\n", (int)leftPidInput, (int)leftPidSetpoint, (int)leftMotor);
+                //sprintf(printBuf, "left: %d\tright: %d\n", (int)leftEncChange, (int)rightEncChange);
                 serialPrint(printBuf);
             }
             */
+
 
             // update outputs
             if(!failsafe){
