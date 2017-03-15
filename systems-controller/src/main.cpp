@@ -11,6 +11,9 @@ extern "C" {
     #include "pwm.h"
 }
 
+// uncomment this to use pid control - doesnt really work yet
+//#define USE_PID_CONTROL
+
 // speed calculation stuff
 // encoders are 512 counts per revolution, 4 pulses per count. 20:1 gearbox
 #define WHEEL_DIAMETER 2 * 0.371475
@@ -65,6 +68,7 @@ void pit0_isr(void){
 }
 
 
+#ifdef USE_PID_CONTROL
 // interrupt every 1ms
 void pit1_isr(void){
     //clear flag
@@ -78,6 +82,7 @@ void pit1_isr(void){
     lastRightEncPos = rightEncPos;
     lastLeftEncPos = leftEncPos;
 }
+#endif
 
 
 // pin change interrupt for rc controller
@@ -130,11 +135,13 @@ void portd_isr(void){
 QuadDecode<1> rightEnc;
 QuadDecode<2> leftEnc;
 
+#ifdef USE_PID_CONTROL
 // create PID objects for each wheel
 double leftPidSetpoint, leftPidInput, leftPidOutput = 0.0;
 double rightPidSetpoint, rightPidInput, rightPidOutput = 0.0;
 PID leftPID(&leftPidInput, &leftPidOutput, &leftPidSetpoint, PID_KP, PID_KI, PID_KD, REVERSE);
 PID rightPID(&rightPidInput, &rightPidOutput, &rightPidSetpoint, PID_KP, PID_KI, PID_KD, REVERSE);
+#endif
 
 int main(){
     // stack light pin configuration, PORTB 0-2
@@ -156,7 +163,9 @@ int main(){
 
     // enable PIT interrupts
     NVIC_ENABLE_IRQ(IRQ_PIT_CH0);
+    #ifdef USE_PID_CONTROL
     NVIC_ENABLE_IRQ(IRQ_PIT_CH1);
+    #endif
 
     // start pwm and set both outputs to 1.5ms
     pwmInit();
@@ -172,11 +181,13 @@ int main(){
     rightEnc.zeroFTM();
     leftEnc.zeroFTM();
 
+    #ifdef USE_PID_CONTROL
     // setup PID
     leftPID.SetMode(AUTOMATIC);
     leftPID.SetOutputLimits(-100, 100);
     rightPID.SetMode(AUTOMATIC);
     rightPID.SetOutputLimits(-100, 100);
+    #endif
 
     char printBuf[128] = "";
     char recvBuf[128] = "";
@@ -262,11 +273,13 @@ int main(){
             rightMotor = bound(rPl + rMl, MIN_PERIOD, MAX_PERIOD);
             leftMotor = bound(rPl - rMl, MIN_PERIOD, MAX_PERIOD);
 
+            #ifndef USE_PID_CONTROL
             // apply speed limits
             rightMotor = map(rightMotor, MIN_PERIOD, MAX_PERIOD, LOW_LIMIT_PERIOD-50, HIGH_LIMIT_PERIOD+50);
             leftMotor = map(leftMotor, MIN_PERIOD, MAX_PERIOD, LOW_LIMIT_PERIOD, HIGH_LIMIT_PERIOD);
+            #endif
 
-            /*
+            #ifdef USE_PID_CONTROL
             // PID computation
             leftPidInput = map(leftEncChange, -52, 52, -100, 100);
             rightPidInput = map(rightEncChange, -52, 52, -100, 100);
@@ -275,7 +288,7 @@ int main(){
             leftPID.Compute();
             rightPID.Compute();
 
-            //leftMotor = map(leftPidOutput, -100, 100, LOW_LIMIT_PERIOD, HIGH_LIMIT_PERIOD);
+            leftMotor = map(leftPidOutput, -100, 100, LOW_LIMIT_PERIOD, HIGH_LIMIT_PERIOD);
             rightMotor = map(rightPidOutput, -100, 100, LOW_LIMIT_PERIOD, HIGH_LIMIT_PERIOD);
 
             if(currTime - prevTime >= 10000){
@@ -284,8 +297,7 @@ int main(){
                 //sprintf(printBuf, "left: %d\tright: %d\n", (int)leftEncChange, (int)rightEncChange);
                 serialPrint(printBuf);
             }
-            */
-
+            #endif
 
             // update outputs
             if(!failsafe){
@@ -337,8 +349,6 @@ int main(){
                         pwmSetPeriod(PWM1, MID_PERIOD);
                         pwmSetPeriod(PWM2, MID_PERIOD);
                     }
-
-                    //serialPrint(driveMsg);
                 }
             }
         }else{
@@ -348,29 +358,5 @@ int main(){
             pwmSetPeriod(PWM1, MID_PERIOD);
             pwmSetPeriod(PWM2, MID_PERIOD);
         }
-
-        /*
-        if(currTime - prevTime >= 10000){
-            prevTime = currTime;
-
-
-            float rightSpeed = rightRPM * RPM_TO_SPEED;
-            int32_t d1 = rightSpeed;
-            float f2 = rightSpeed - d1;
-            int32_t d2 = trunc(f2 * 10000);
-
-
-            //sprintf(printBuf, "right speed: %d.%03d mph\n", (int)d1, (int)d2);
-            //sprintf(printBuf, "right rpm: %f\n", rightRPM);
-            //sprintf(printBuf, "rc_x: %d\nrc_y: %d\nrc_estop: %d\nrc_mode: %d\n\n", (int)pwGood[RC_X], (int)pwGood[RC_Y], (int)pwGood[RC_ESTOP], (int)pwGood[RC_MODE]);
-            //sprintf(printBuf, "rc_x: %d\nrc_y: %d\nrc_estop: %d\nrc_mode: %d\n\n", (int)ch[RC_X], (int)ch[RC_Y], (int)ch[RC_ESTOP], (int)ch[RC_MODE]);
-            //sprintf(printBuf, "mode: %d failsafe: %d count: %d\n", (int)mode, (int)failsafe, i++);
-            //sprintf(printBuf, "left encoder: %d right encoder: %d time: %d\r\n", (int)leftEncPos, (int)rightEncPos, currTime);
-            //sprintf(printBuf, "%d\t%d\t%d\t%u\r\n", i++, (int)leftEncPos, (int)rightEncPos, (unsigned int)currTime);
-            //serialPrint(printBuf);
-        }
-
-        endTime = micross;
-        */
     }
 }
